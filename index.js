@@ -3,8 +3,6 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import cors from "cors";
 import apiRoutes from "./api/v1/routes.js";
-import { connectMongo } from "./config/mongo.js";
-import { connectTurso, db } from "./config/turso.js";
 import limiter from "./middleware/rateLimiter.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
@@ -33,7 +31,8 @@ app.use(limiter);
 app.use(express.json());
 app.use(cookieParser());
 // Centralized routes
-app.use("/", apiRoutes(db));
+// Mount routes; some route groups accept an optional db client
+app.use("/", apiRoutes(null));
 app.get("/", (_req, res) => {
   res.send(`
       <!DOCTYPE html>
@@ -85,11 +84,25 @@ app.get("/", (_req, res) => {
 // Centralized error handling
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 (async () => {
   try {
-    await connectMongo();
+    // Optional: connect to Mongo if configured
+    if (process.env.MONGO_URI) {
+      const { connectMongo } = await import("./config/mongo.js");
+      await connectMongo();
+    } else {
+      console.log("MONGO_URI not set — skipping Mongo connection");
+    }
+
+    // Optional: connect to Turso if configured
+    if (process.env.TURSO_DB_URL) {
+      const { connectTurso } = await import("./config/turso.js");
+      await connectTurso();
+    } else {
+      console.log("TURSO_DB_URL not set — skipping Turso connection");
+    }
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT} ✅`);
     });
