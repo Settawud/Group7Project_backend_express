@@ -1,8 +1,8 @@
 import express from "express";
-import userRoutes from "./libsql/users.js";
-import noteRoutes from "./libsql/notes.js";
-import mongoUsers from "./mongo/users.js";
-import mongoNotes from "./mongo/notes.js";
+// import userRoutes from "./libsql/users.js";
+// import noteRoutes from "./libsql/notes.js";
+// import mongoUsers from "./mongo/users.js";
+// import mongoNotes from "./mongo/notes.js";
 
 // New e-commerce routes
 import productsRoutes from "./shop/products.routes.js";
@@ -14,12 +14,12 @@ export default (db) => {
   const router = express.Router();
   // Existing sample routes (mounted only if configured)
   if (process.env.TURSO_DB_URL) {
-    router.use(userRoutes(db));
-    router.use(noteRoutes(db));
+    // router.use(userRoutes(db));
+    // router.use(noteRoutes(db));
   }
   if (process.env.MONGO_URI) {
-    router.use("/mongo", mongoUsers);
-    router.use("/mongo", mongoNotes);
+    // router.use("/mongo", mongoUsers);
+    // router.use("/mongo", mongoNotes);
   }
 
   // E-commerce API v1

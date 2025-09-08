@@ -1,5 +1,6 @@
-import express from "express";
-import { OpenAI } from "openai";
+/* import express from "express";
+// import { OpenAI } from "openai";
+import { OPENAI_API_KEY } from "openai";
 import dotenv from "dotenv";
 import { Note } from "../../../models/Note.js";
 import {
@@ -307,4 +308,4 @@ Answer:
   });
 });
 
-export default router;
+export default router; */

@@ -21,7 +21,7 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    "https://rag-my-note-app.vercel.app",
+    ,
   ], // frontend domain
   credentials: true, // ✅ allow cookies to be sent
 };
@@ -97,14 +97,15 @@ const PORT = process.env.PORT || 4000;
     }
 
     // Optional: connect to Turso if configured
-    if (process.env.TURSO_DB_URL) {
-      const { connectTurso } = await import("./config/turso.js");
-      await connectTurso();
-    } else {
-      console.log("TURSO_DB_URL not set — skipping Turso connection");
-    }
+    // if (process.env.TURSO_DB_URL) {
+    //   const { connectTurso } = await import("./config/turso.js");
+    //   await connectTurso();
+    // } else {
+    //   console.log("TURSO_DB_URL not set — skipping Turso connection");
+    // }
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT} ✅`);
+      console.log(`http://localhost:4000`)
     });
   } catch (err) {
     console.error("❌ Startup error:", err);

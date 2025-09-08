@@ -1,4 +1,4 @@
-# Use the official Node.js image as the base image (layer 1)
+s# Use the official Node.js image as the base image (layer 1)
 FROM node:20 
 
 # Set the working directory inside the container (layer 2)
