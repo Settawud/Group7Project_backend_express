@@ -23,7 +23,7 @@ POST http://localhost:4000/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "ada.1757360114@example.com",
+  "email": "ada.1757361070@example.com",
   "password": "secret123"
 }
 
@@ -53,14 +53,14 @@ Content-Type: application/json
   "newPassword": "secret456"
 }
 
-### Colors: list
+### Colors (Mongo): list
 # @name colors_list
-GET http://localhost:4000/api/v1/colors
+GET http://localhost:4000/api/v1/mongo/colors
 
 @colorId = {{colors_list.response.body.items[0].id}}
 
-### Colors: create (requires auth)
-POST http://localhost:4000/api/v1/colors
+### Colors (Mongo): create (requires auth)
+POST http://localhost:4000/api/v1/mongo/colors
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 Content-Type: application/json
 
@@ -70,8 +70,8 @@ Content-Type: application/json
   "hex": "#3b82f6"
 }
 
-### Products: create (auth required)
-POST http://localhost:4000/api/v1/products
+### Products (Mongo): create (auth required)
+POST http://localhost:4000/api/v1/mongo/products
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 Content-Type: application/json
 
@@ -95,22 +95,22 @@ Content-Type: application/json
   ]
 }
 
-### Products: list (grab ids)
+### Products (Mongo): list (grab ids)
 # @name products_list
-GET http://localhost:4000/api/v1/products
+GET http://localhost:4000/api/v1/mongo/products
 
 @productId = {{products_list.response.body.items[0].id}}
 @variantId = {{products_list.response.body.items[0].variants[0].id}}
 
-### Products: detail by productId
-GET http://localhost:4000/api/v1/products/prd_a73a9478-683a-40d8-8778-ae2ae6ba5843
+### Products (Mongo): detail by productId
+GET http://localhost:4000/api/v1/mongo/products/{{productId}}
 
-### Cart: get (auth required)
-GET http://localhost:4000/api/v1/cart
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Cart (Mongo): get (auth required)
+GET http://localhost:4000/api/v1/mongo/cart
+Authorization: Bearer {{token}}
 
-### Cart: add item (productId + variantId)
-POST http://localhost:4000/api/v1/cart/items
+### Cart (Mongo): add item (productId + variantId)
+POST http://localhost:4000/api/v1/mongo/cart/items
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 Content-Type: application/json
 
@@ -120,12 +120,12 @@ Content-Type: application/json
   "quantity": 1
 }
 
-### Orders: create from cart
-POST http://localhost:4000/api/v1/orders
+### Orders (Mongo): create from cart
+POST http://localhost:4000/api/v1/mongo/orders
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
-### Orders: list
-GET http://localhost:4000/api/v1/orders
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Orders (Mongo): list
+GET http://localhost:4000/api/v1/mongo/orders
+Authorization: Bearer {{token}}
 
 ### Mongo Auth: logout (clear cookie, client should also discard token)
 POST http://localhost:4000/api/v1/mongo/auth/logout
@@ -133,4 +133,4 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmM
 
 ### Mongo Auth: logout-all (revoke all sessions)
 POST http://localhost:4000/api/v1/mongo/auth/logout-all
-Authorization: BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g

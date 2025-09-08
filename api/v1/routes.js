@@ -6,6 +6,10 @@ import cartRoutes from "./shop/cart.routes.js";
 import ordersRoutes from "./shop/orders.routes.js";
 import colorsRoutes from "./shop/colors.routes.js";
 import mongoose from "mongoose";
+import mongoProducts from "./mongo/products.routes.js";
+import mongoColors from "./mongo/colors.routes.js";
+import mongoCart from "./mongo/cart.routes.js";
+import mongoOrders from "./mongo/orders.routes.js";
 import jwtBearer from "../../middleware/jwtBearer.js";
 import { register, login, me, updateMe, changePassword, logout, logoutAll } from "./mongo/controllers/user.controller.js";
 
@@ -36,6 +40,12 @@ export default (db) => {
   router.get("/api/v1/mongo/users/me", jwtBearer, me);
   router.patch("/api/v1/mongo/users/me", jwtBearer, updateMe);
   router.patch("/api/v1/mongo/users/me/password", jwtBearer, changePassword);
+
+  // Mongo product/color/cart/order routes
+  router.use("/api/v1/mongo/products", mongoProducts);
+  router.use("/api/v1/mongo/colors", mongoColors);
+  router.use("/api/v1/mongo/cart", mongoCart);
+  router.use("/api/v1/mongo/orders", mongoOrders);
 
   // Health: DB readiness
   router.get("/health/db", async (_req, res) => {
