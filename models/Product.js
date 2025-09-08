@@ -16,15 +16,8 @@ export const variantSchema = new Schema({
     image: { type: [String], default: [] }
 });
 
-// Now, define the Dimension schema
-const dimensionSchema = new Schema({
-    width: { type: String, required: true },
-    height: { type: String, required: true },
-    depth: { type: String, required: true },
-    weight: { type: String, required: true }
-});
-
 // Finally, define the main Product schema
+// The dimensionSchema is now embedded directly
 export const productSchema = new Schema({
     name: { type: String, required: true },
     description: { type: String, required: true },
@@ -33,10 +26,16 @@ export const productSchema = new Schema({
     tag: { type: [String], default: [] },
     material: { type: String, required: true },
     image: { type: [String], default: [] },
-    dimension: { type: dimensionSchema, required: true },
+    dimension: {
+        width: { type: String, required: true },
+        height: { type: String, required: true },
+        depth: { type: String, required: true },
+        weight: { type: String, required: true }
+    },
     variants: {
         type: [variantSchema],
         required: true
     }
 });
 
+export const Product = model('Product', productSchema);
