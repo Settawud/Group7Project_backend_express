@@ -1,22 +1,25 @@
 import jwt from "jsonwebtoken";
+import { User } from "../models/User.js";
 
-export const authUser = async (req, res, next) => {
-  const token = req.cookies?.accessToken;
-  if (!token) {
-    return res.json({ success: false, message: "Access denied. No token." });
-  }
+export const requireAuth = async (req, res, next) => {
   try {
-    const decoded_token = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { user: { _id: decoded_token.userId } };
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+    if (!token) return res.status(401).json({ error: true, message: "No token" });
+
+    //const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = {}; // <-- แทนด้วย verify จริง
+    const { uid, sv } = decoded;
+    const user = await User.findById(uid);
+    if (!user) return res.status(401).json({ error: true, message: "Invalid token " });
+
+    if (typeof sv === "number" && sv !== user.sessionsVersion){
+      return res.status(401).json({ error: true, message: "Session revoked" });
+    }
+
+    req.userId = uid;
     next();
   } catch (err) {
-    const isExpired = err.name === "TokenExpiredError";
-    res.status(401).json({
-      error: true,
-      code: isExpired ? "TOKEN_EXPIRED" : "INVALID_TOKEN",
-      message: isExpired
-        ? "Token has expired, please log in again."
-        : "Invalid token.",
-    });
+    return res.status(401).json({ error: true, message: "Unauthorized" });
   }
 };
