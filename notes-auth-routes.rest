@@ -1,0 +1,62 @@
+# ================================
+# 📝 NOTES ROUTES TESTS
+# ================================
+
+### 1. Get all notes (unprotected route)
+GET http://localhost:3030/mongo/notes
+
+### 2. Create a new note (protected route + user id required)
+POST http://localhost:3030/mongo/notes
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+
+{
+  "title": "My First Note",
+  "content": "This is the content of my first note.",
+  "tags": ["personal", "important"],
+  "isPinned": false
+}
+
+### 3. Add a new note (protected route)
+POST http://localhost:3030/mongo/add-note
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NTY0NDQzODksImV4cCI6MTc1NjQ0Nzk4OX0.Z3F00_AXuVz-0V67fXMRp4uXJ0bg2Ro7zSTeGklc_WE
+Content-Type: application/json
+
+{
+  "title": "Imagine Dragon",
+  "content": "This is the content of my second note.",
+  "tags": ["work", "urgent"]
+}
+
+### 4. Edit a note
+PUT http://localhost:3030/mongo/edit-note/680ae42c4e8922400849f368
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+
+{
+  "title": "Updated Note Title",
+  "content": "Updated content for the note.",
+  "tags": ["updated", "work"],
+  "isPinned": true
+}
+
+### 5. Update pinned status of a note
+PUT http://localhost:3030/mongo/update-note-pinned/680ae42c4e8922400849f368
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDQzNDcsImV4cCI6MTc0NTU0Nzk0N30.Xhe1tUZdosvQPiAxYPzcej5rJ0oiTSzAX2O_LqcLy-M
+
+{
+  "isPinned": false
+}
+
+### 6. Get all notes for the authenticated user
+GET http://localhost:3030/mongo/get-all-notes
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDQzNDcsImV4cCI6MTc0NTU0Nzk0N30.Xhe1tUZdosvQPiAxYPzcej5rJ0oiTSzAX2O_LqcLy-M
+
+### 7. Delete a note
+DELETE http://localhost:3030/mongo/delete-note/<NOTE_ID>
+Authorization: Bearer <TOKEN>
+
+### 8. Search notes
+GET http://localhost:3030/mongo/search-notes?query=imagine
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDQzNDcsImV4cCI6MTc0NTU0Nzk0N30.Xhe1tUZdosvQPiAxYPzcej5rJ0oiTSzAX2O_LqcLy-M

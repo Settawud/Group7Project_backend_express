@@ -1,0 +1,86 @@
+### Admin User Route - Get all users
+GET http://localhost:3030/mongo/users
+
+### Admin User - Get all notes
+GET http://localhost:3030/mongo/notes
+
+### Admin User - Create a new user
+POST http://localhost:3030/mongo/users
+Content-Type: application/json
+
+{
+  "fullName": "Betty",
+  "email": "betty@example.com"
+}
+
+### Admin route - Create a new note (basic)
+POST http://localhost:3030/mongo/notes
+Content-Type: application/json
+
+{
+  "title": "My New Note 1234!!!",
+  "content": "This is the content of my new note 1234!!!.",
+  "tags": ["personal","todo"],
+  "isPinned": false, 
+  "userId": "667d791cd788728b158a7dd0"
+}
+
+### User route - Create a new note (protected route)
+POST http://localhost:3030/mongo/add-note
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+
+{
+  "title": "New note added by login user 3",
+  "content": "This note was added via a protected route.",
+  "tags": ["personal", "important"]
+}
+
+### User route - Register a new user
+POST http://localhost:3030/mongo/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "John Doe",
+  "email": "johndoe@example.com",
+  "password": "securePassword123"
+}
+
+### User route - Get User Profile
+GET http://localhost:3030/mongo/auth/profile
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NTY0MzQxNDAsImV4cCI6MTc1NjQzNzc0MH0.IGsGwGOM3vbCZELSBH11jdru2ePRhatkOL2riRXZUt0
+
+
+### User route - Login
+POST http://localhost:3030/mongo/auth/cookie/login
+Content-Type: application/json
+
+{
+  "email": "johndoe@example.com",
+  "password": "securePassword123"
+}
+
+### Test route - Verify the token (replace <TOKEN> with the token from the login response)
+GET http://localhost:3030/mongo/auth/verify
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+
+### User route - Logout user
+POST http://localhost:3030/mongo/auth/logout
+
+### User notes (paginated) - page 1
+GET http://localhost:3030/mongo/get-all-notes?page=1&limit=10
+Cookie: accessToken=YOUR_JWT_TOKEN
+
+### User notes (paginated + search)
+GET http://localhost:3030/mongo/get-all-notes?page=2&limit=5&q=vector
+Cookie: accessToken=YOUR_JWT_TOKEN
+
+
+### Post note
+POST http://localhost:3030/mongo/answer-question/68ba837031f79a09eda08fe0
+Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJhODM3MDMxZjc5YTA5ZWRhMDhmZTAiLCJpYXQiOjE3NTcwNTM4MTIsImV4cCI6MTc1NzA1NzQxMn0.AwfAXNME95BD3W9kxxGzRfwVAXTaHbOBQx_1gIDuEWg
+Content-Type: application/json
+
+{
+"question": "who is project owner"
+}
