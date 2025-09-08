@@ -1,86 +1,136 @@
-### Admin User Route - Get all users
-GET http://localhost:3030/mongo/users
+@ts = {{$timestamp}}
+@email = ada.{{ts}}@example.com
 
-### Admin User - Get all notes
-GET http://localhost:3030/mongo/notes
+### Health: DB
+GET http://localhost:4000/health/db
 
-### Admin User - Create a new user
-POST http://localhost:3030/mongo/users
+### Mongo Auth: register
+POST http://localhost:4000/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
-  "fullName": "Betty",
-  "email": "betty@example.com"
+  "firstname": "Ada",
+  "lastname": "Lovelace",
+  "email": "{{email}}",
+  "phone": "+66801234567",
+  "password": "secret123",
+  "image": ""
 }
 
-### Admin route - Create a new note (basic)
-POST http://localhost:3030/mongo/notes
+### Mongo Auth: login
+# @name mongo_login
+POST http://localhost:4000/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "title": "My New Note 1234!!!",
-  "content": "This is the content of my new note 1234!!!.",
-  "tags": ["personal","todo"],
-  "isPinned": false, 
-  "userId": "667d791cd788728b158a7dd0"
+  "email": "ada.1757360114@example.com",
+  "password": "secret123"
 }
 
-### User route - Create a new note (protected route)
-POST http://localhost:3030/mongo/add-note
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+//@token = {{mongo_login.response.body.token}}
 
-{
-  "title": "New note added by login user 3",
-  "content": "This note was added via a protected route.",
-  "tags": ["personal", "important"]
-}
+### Mongo Users: me
+GET http://localhost:4000/api/v1/mongo/users/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 
-### User route - Register a new user
-POST http://localhost:3030/mongo/auth/register
+### Mongo Users: update me
+PATCH http://localhost:4000/api/v1/mongo/users/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 Content-Type: application/json
 
 {
-  "fullName": "John Doe",
-  "email": "johndoe@example.com",
-  "password": "securePassword123"
+  "firstname": "Ada",
+  "lastname": "L."
 }
 
-### User route - Get User Profile
-GET http://localhost:3030/mongo/auth/profile
-Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NTY0MzQxNDAsImV4cCI6MTc1NjQzNzc0MH0.IGsGwGOM3vbCZELSBH11jdru2ePRhatkOL2riRXZUt0
-
-
-### User route - Login
-POST http://localhost:3030/mongo/auth/cookie/login
+### Mongo Users: change password
+PATCH http://localhost:4000/api/v1/mongo/users/me/password
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "email": "johndoe@example.com",
-  "password": "securePassword123"
+  "oldPassword": "secret123",
+  "newPassword": "secret456"
 }
 
-### Test route - Verify the token (replace <TOKEN> with the token from the login response)
-GET http://localhost:3030/mongo/auth/verify
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODBhZDM2NGQxM2NmODM3NjcxMmIwYjkiLCJpYXQiOjE3NDU1NDA3MTcsImV4cCI6MTc0NTU0NDMxN30.yBtZemo4KdP2Xr_vtvD5KfKC6pdspIVIxRgxenSDCpo
+### Colors: list
+# @name colors_list
+GET http://localhost:4000/api/v1/colors
 
-### User route - Logout user
-POST http://localhost:3030/mongo/auth/logout
+@colorId = {{colors_list.response.body.items[0].id}}
 
-### User notes (paginated) - page 1
-GET http://localhost:3030/mongo/get-all-notes?page=1&limit=10
-Cookie: accessToken=YOUR_JWT_TOKEN
-
-### User notes (paginated + search)
-GET http://localhost:3030/mongo/get-all-notes?page=2&limit=5&q=vector
-Cookie: accessToken=YOUR_JWT_TOKEN
-
-
-### Post note
-POST http://localhost:3030/mongo/answer-question/68ba837031f79a09eda08fe0
-Cookie: accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJhODM3MDMxZjc5YTA5ZWRhMDhmZTAiLCJpYXQiOjE3NTcwNTM4MTIsImV4cCI6MTc1NzA1NzQxMn0.AwfAXNME95BD3W9kxxGzRfwVAXTaHbOBQx_1gIDuEWg
+### Colors: create (requires auth)
+POST http://localhost:4000/api/v1/colors
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
 Content-Type: application/json
 
 {
-"question": "who is project owner"
+  "name_th": "สีฟ้า",
+  "name_en": "Blue",
+  "hex": "#3b82f6"
 }
+
+### Products: create (auth required)
+POST http://localhost:4000/api/v1/products
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+Content-Type: application/json
+
+{
+  "name": "Standing Desk Pro",
+  "description": "Adjustable height standing desk",
+  "category": "desk",
+  "trial": false,
+  "tags": ["office", "ergonomic"],
+  "material": "Steel/Wood",
+  "images": ["/images/standing-desk.jpg"],
+  "dimension": { "width": 120, "height": 75, "depth": 60, "weight": 30 },
+  "variants": [
+    {
+      "trial": false,
+      "colorId": "{{colorId}}",
+      "price": 13900,
+      "quantityInStock": 5,
+      "images": ["/images/desk-black.jpg"]
+    }
+  ]
+}
+
+### Products: list (grab ids)
+# @name products_list
+GET http://localhost:4000/api/v1/products
+
+@productId = {{products_list.response.body.items[0].id}}
+@variantId = {{products_list.response.body.items[0].variants[0].id}}
+
+### Products: detail by productId
+GET http://localhost:4000/api/v1/products/prd_a73a9478-683a-40d8-8778-ae2ae6ba5843
+
+### Cart: get (auth required)
+GET http://localhost:4000/api/v1/cart
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+
+### Cart: add item (productId + variantId)
+POST http://localhost:4000/api/v1/cart/items
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+Content-Type: application/json
+
+{
+  "productId": "{{productId}}",
+  "variantId": "{{variantId}}",
+  "quantity": 1
+}
+
+### Orders: create from cart
+POST http://localhost:4000/api/v1/orders
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Orders: list
+GET http://localhost:4000/api/v1/orders
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+
+### Mongo Auth: logout (clear cookie, client should also discard token)
+POST http://localhost:4000/api/v1/mongo/auth/logout
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+
+### Mongo Auth: logout-all (revoke all sessions)
+POST http://localhost:4000/api/v1/mongo/auth/logout-all
+Authorization: BearereyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g

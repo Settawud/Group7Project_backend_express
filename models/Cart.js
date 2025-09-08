@@ -1,44 +1,23 @@
 import { Schema, model } from "mongoose";
 
-// Schema for the individual items within the cart
-const cartItemSchema = new Schema({
-    product: {
-        _id: {
-            type: Schema.Types.ObjectId,
-            ref: 'Product', // Reference the Product model
-            required: true
-        },
-        variant: {
-            _id: {
-                type: Schema.Types.ObjectId,
-                ref: 'Product.variants', // Reference the nested variant within the Product model
-                required: true
-            },
-            quantity: {
-                type: Number,
-                required: true,
-                min: 1 // Ensure the quantity is at least 1
-            }
-        }
-    }
-}, { _id: false }); // Disable the auto-generated _id for subdocuments
+// Item in a cart
+const cartItemSchema = new Schema(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+    variantId: { type: Schema.Types.ObjectId, required: true },
+    quantity: { type: Number, required: true, min: 1 },
+    trial: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
 
 // Main Cart schema
-const cartSchema = new Schema({
-    userId: {
-        type: Schema.Types.ObjectId,
-        ref: 'User', // Reference the User model
-        required: true
-    },
-    items: {
-        type: [cartItemSchema],
-        required: true,
-        default: [] // Default to an empty array
-    }
-}, {
-    timestamps: true // Adds createdAt and updatedAt fields
-});
+const cartSchema = new Schema(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    items: { type: [cartItemSchema], default: [] },
+  },
+  { timestamps: true }
+);
 
-// Create the Mongoose model
-export const Cart = mongoose.model('Cart', cartSchema);
-
+export const Cart = model("Cart", cartSchema);

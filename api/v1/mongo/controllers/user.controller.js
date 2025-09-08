@@ -1,4 +1,5 @@
-import { User, user } from "../../../../models/User";
+import { User } from "../../../../models/User.js";
+import jwt from "jsonwebtoken";
 
 //POST /api/auth/register
 export const register = async (req, res, next) => {
@@ -23,17 +24,34 @@ export const login = async (req, res, next) => {
         if (!user) return res.status(401).json({ error: true, message: "Invalid credentials" });
 
         const ok =  await user.comparePassword(password);
-        if (!password) return res.status(401).json({ error: true, message: "Invalid credentials" });
+        if (!ok) return res.status(401).json({ error: true, message: "Invalid credentials" });
 
-        //ตัวอย่าง ทำ JWT ใส่ sessionVersion สำหรับ revoke ทีหลัง
-        //เก็บลงใน cookie httpOnly หรือส่งใน body ?
-        const payload = { uid: user._id.toString(), sv: user.sessionsVersion };
-        // const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+        // ออก JWT ให้ตรงกับ jwtBearer (ใช้ key userId)
+        const token = jwt.sign(
+          {
+            userId: user._id.toString(),
+            email: user.email,
+            name: `${user.firstname || ""} ${user.lastname || ""}`.trim(),
+            sv: user.sessionsVersion,
+          },
+          process.env.JWT_SECRET || "dev_secret",
+          { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+        );
+
+        // ส่งกลับทั้งใน cookie (httpOnly) และใน response body
+        try {
+          res.cookie?.("accessToken", token, {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false, // set true บน HTTPS ใน prod
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+          });
+        } catch { /* noop if cookie not available in test env */ }
 
         const safe = user.toObject();
         delete safe.password;
 
-        return res.json({ error: false, user: safe, /*, token */ });
+        return res.json({ error: false, token, user: safe });
     } catch (err) {
         next(err);
     }
@@ -42,8 +60,8 @@ export const login = async (req, res, next) => {
 // GET /api/users/me
 export const me = async (req, res, next) => {
     try {
-        // สมมติ middleware auth ใส่ req.userId
-        const user = await User.findById(req.userId);
+        // ใช้ req.user.id ที่เติมโดย jwtBearer
+        const user = await User.findById(req.user?.id);
         if (!user) return res.status(404).json({ error: true, message: "Not found" });
         return res.json({ error: false, user });
     } catch (err) {
@@ -52,12 +70,12 @@ export const me = async (req, res, next) => {
 }
 
 // PATCH /api/users/me (แก้ไขโปรไฟล์ทั่วไป)
-export const UpdateMe = async (req, res, next) => {
+export const updateMe = async (req, res, next) => {
     try {
-        const { fistname, lastname, phone, image, addresses } = req.body;
+        const { firstname, lastname, phone, image, addresses } = req.body || {};
         const user = await User.findByIdAndUpdate(
-            req.userId,
-            { $set: { firstname, lastname, phone, image, addresses} },
+            req.user?.id,
+            { $set: { firstname, lastname, phone, image, addresses } },
             { new: true, runValidators: true }
             );
         return res.json({ error: false, user });
@@ -70,16 +88,14 @@ export const UpdateMe = async (req, res, next) => {
 export const changePassword = async (req, res, next) => {
     try {
         const { oldPassword, newPassword } = req.body;
-        const user = await User.findById(req.UserId).select("+password");
+        const user = await User.findById(req.user?.id).select("+password");
         if (!user) return res.status(404).json({ error: true, message: "Not found"});
         const ok = await user.comparePassword(oldPassword);
         if (!ok) return res.status(400).json({ error: true, message: "Old password incorrect" });
 
         // ใช้ instance + save → pre("save") จะ hash ให้อัตโนมัติ
         user.password = newPassword;
-        await user.save();
-
-         // bump sessionsVersion เพื่อให้ token เก่าหมดอายุ
+        // bump sessionsVersion เพื่อให้ token เก่าหมดอายุ
         user.sessionsVersion += 1;
         await user.save();
 
@@ -88,4 +104,30 @@ export const changePassword = async (req, res, next) => {
         next(err);
     }
 
-}
+};
+
+// POST /api/v1/mongo/auth/logout (clear cookie; client should discard token)
+export const logout = async (req, res, _next) => {
+  try {
+    if (typeof res.clearCookie === "function") {
+      res.clearCookie("accessToken", { httpOnly: true, sameSite: "lax", secure: false });
+    }
+  } catch {}
+  return res.json({ error: false, message: "Logged out" });
+};
+
+// POST /api/v1/mongo/auth/logout-all (revoke all tokens via sessionsVersion)
+export const logoutAll = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+    const user = await User.findById(uid);
+    if (!user) return res.status(404).json({ error: true, message: "Not found" });
+    user.sessionsVersion += 1;
+    await user.save();
+    try { res.clearCookie?.("accessToken", { httpOnly: true, sameSite: "lax", secure: false }); } catch {}
+    return res.json({ error: false, message: "Logged out all sessions" });
+  } catch (err) {
+    next(err);
+  }
+};

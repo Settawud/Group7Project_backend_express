@@ -20,9 +20,9 @@ router.get("/", (req, res) => {
   res.json({ success: true, count: items.length, items });
 });
 
-// GET /api/v1/products/:skuId
-router.get("/:skuId", (req, res) => {
-  const prod = getProduct(req.params.skuId);
+// GET /api/v1/products/:productId
+router.get("/:productId", (req, res) => {
+  const prod = getProduct(req.params.productId);
   if (!prod) return res.status(404).json({ error: true, message: "Not found" });
   res.json({ success: true, item: prod });
 });
@@ -35,19 +35,18 @@ router.post("/", jwtBearer, (req, res) => {
   res.status(201).json({ success: true, item: created });
 });
 
-// PATCH /api/v1/products/:skuId
-router.patch("/:skuId", jwtBearer, (req, res) => {
-  const updated = updateProduct(req.params.skuId, req.body || {});
+// PATCH /api/v1/products/:productId
+router.patch("/:productId", jwtBearer, (req, res) => {
+  const updated = updateProduct(req.params.productId, req.body || {});
   if (!updated) return res.status(404).json({ error: true, message: "Not found" });
   res.json({ success: true, item: updated });
 });
 
-// DELETE /api/v1/products/:skuId
-router.delete("/:skuId", jwtBearer, (req, res) => {
-  const ok = deleteProduct(req.params.skuId);
+// DELETE /api/v1/products/:productId
+router.delete("/:productId", jwtBearer, (req, res) => {
+  const ok = deleteProduct(req.params.productId);
   if (!ok) return res.status(404).json({ error: true, message: "Not found" });
   res.json({ success: true });
 });
 
 export default router;
-

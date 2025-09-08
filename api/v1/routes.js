@@ -1,14 +1,13 @@
 import express from "express";
-// import userRoutes from "./libsql/users.js";
-// import noteRoutes from "./libsql/notes.js";
-// import mongoUsers from "./mongo/users.js";
-// import mongoNotes from "./mongo/notes.js";
-
 // New e-commerce routes
 import productsRoutes from "./shop/products.routes.js";
 import authRoutes from "./shop/auth.routes.js";
 import cartRoutes from "./shop/cart.routes.js";
 import ordersRoutes from "./shop/orders.routes.js";
+import colorsRoutes from "./shop/colors.routes.js";
+import mongoose from "mongoose";
+import jwtBearer from "../../middleware/jwtBearer.js";
+import { register, login, me, updateMe, changePassword, logout, logoutAll } from "./mongo/controllers/user.controller.js";
 
 export default (db) => {
   const router = express.Router();
@@ -27,5 +26,42 @@ export default (db) => {
   router.use("/api/v1/products", productsRoutes);
   router.use("/api/v1/cart", cartRoutes);
   router.use("/api/v1/orders", ordersRoutes);
+  router.use("/api/v1/colors", colorsRoutes);
+
+  // Mongo-backed auth/users (separate namespace)
+  router.post("/api/v1/mongo/auth/register", register);
+  router.post("/api/v1/mongo/auth/login", login);
+  router.post("/api/v1/mongo/auth/logout", jwtBearer, logout);
+  router.post("/api/v1/mongo/auth/logout-all", jwtBearer, logoutAll);
+  router.get("/api/v1/mongo/users/me", jwtBearer, me);
+  router.patch("/api/v1/mongo/users/me", jwtBearer, updateMe);
+  router.patch("/api/v1/mongo/users/me/password", jwtBearer, changePassword);
+
+  // Health: DB readiness
+  router.get("/health/db", async (_req, res) => {
+    const rs = mongoose.connection.readyState; // 0=disconnected,1=connected,2=connecting,3=disconnecting
+    const map = { 0: "disconnected", 1: "connected", 2: "connecting", 3: "disconnecting" };
+    const base = {
+      readyState: rs,
+      state: map[rs] || "unknown",
+      dbName: mongoose.connection?.name || process.env.MONGO_DBNAME || null,
+      host: mongoose.connection?.host || null,
+      appTime: new Date().toISOString(),
+    };
+    try {
+      let pingMs = null;
+      if (rs === 1 && mongoose.connection?.db?.admin) {
+        const t0 = Date.now();
+        await mongoose.connection.db.admin().command({ ping: 1 });
+        pingMs = Date.now() - t0;
+      }
+      const body = { status: rs === 1 ? "ok" : "degraded", pingMs, ...base };
+      const code = rs === 1 ? 200 : 503;
+      return res.status(code).json(body);
+    } catch (err) {
+      return res.status(503).json({ status: "error", error: String(err?.message || err), ...base });
+    }
+  });
+
   return router;
 };

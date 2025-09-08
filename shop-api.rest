@@ -4,8 +4,9 @@ GET http://localhost:4000/api/v1/products
 ### Products: search + filter
 GET http://localhost:4000/api/v1/products?q=ergo&category=เก้าอี้
 
-### Products: detail
-GET http://localhost:4000/api/v1/products/EGC-001
+### Products: detail (pick an id from list)
+# Replace <productId> with one from the list response
+GET http://localhost:4000/api/v1/products/prd_1ebc3844-5fdd-44f9-868c-39b94081a19b
 
 ### Auth: register
 POST http://localhost:4000/api/v1/auth/register
@@ -28,23 +29,24 @@ Content-Type: application/json
 
 ### Cart: get (requires Bearer token)
 GET http://localhost:4000/api/v1/cart
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c3JfNDdlZDk3NDEtYzdkNC00NTJjLThiMTktOGFmMjcwNzU1MmU1IiwiZW1haWwiOiJkZW1vQGV4YW1wbGUuY29tIiwibmFtZSI6IkRlbW8iLCJpYXQiOjE3NTczNTU3MjcsImV4cCI6MTc1NzM1OTMyN30.pARpjArKYG5ndXdtJF3sN_EQrZjjqUTKUA-eiU9PSaQ
 
-### Cart: add item
+### Cart: add item (productId + variantId)
+# Replace <productId>/<variantId> with values from product detail
 POST http://localhost:4000/api/v1/cart/items
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c3JfNDdlZDk3NDEtYzdkNC00NTJjLThiMTktOGFmMjcwNzU1MmU1IiwiZW1haWwiOiJkZW1vQGV4YW1wbGUuY29tIiwibmFtZSI6IkRlbW8iLCJpYXQiOjE3NTczNTU3MjcsImV4cCI6MTc1NzM1OTMyN30.pARpjArKYG5ndXdtJF3sN_EQrZjjqUTKUA-eiU9PSaQ
 
 {
-  "skuId": "EGC-001",
+  "productId": "prd_1ebc3844-5fdd-44f9-868c-39b94081a19b",
+  "variantId": "var_4fb71022-e20d-4be2-be09-71ba2c54a786",
   "quantity": 1
 }
 
 ### Orders: create from cart
 POST http://localhost:4000/api/v1/orders
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c3JfNDdlZDk3NDEtYzdkNC00NTJjLThiMTktOGFmMjcwNzU1MmU1IiwiZW1haWwiOiJkZW1vQGV4YW1wbGUuY29tIiwibmFtZSI6IkRlbW8iLCJpYXQiOjE3NTczNTU3MjcsImV4cCI6MTc1NzM1OTMyN30.pARpjArKYG5ndXdtJF3sN_EQrZjjqUTKUA-eiU9PSaQ
 
 ### Orders: list
 GET http://localhost:4000/api/v1/orders
-Authorization: Bearer {{token}}
-
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c3JfNDdlZDk3NDEtYzdkNC00NTJjLThiMTktOGFmMjcwNzU1MmU1IiwiZW1haWwiOiJkZW1vQGV4YW1wbGUuY29tIiwibmFtZSI6IkRlbW8iLCJpYXQiOjE3NTczNTU3MjcsImV4cCI6MTc1NzM1OTMyN30.pARpjArKYG5ndXdtJF3sN_EQrZjjqUTKUA-eiU9PSaQ
