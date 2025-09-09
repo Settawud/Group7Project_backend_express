@@ -2,6 +2,9 @@ import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
 import requireRole from "../../../middleware/requireRole.js";
 import { Product } from "../../../models/Product.js";
+import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
+import cloudinary from "../../../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -71,3 +74,56 @@ router.delete("/:productId", jwtBearer, requireRole("admin"), async (req, res, n
 });
 
 export default router;
+
+// === Upload product images (admin only) ===
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: "products",
+      resource_type: "image",
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      // public_id: `product_${Date.now()}` // let Cloudinary assign by default
+    };
+  },
+});
+const upload = multer({ storage });
+
+// POST /api/v1/mongo/products/:productId/images
+router.post(
+  "/:productId/images",
+  jwtBearer,
+  requireRole("admin"),
+  upload.array("images", 10),
+  async (req, res, next) => {
+    try {
+      const product = await Product.findById(req.params.productId);
+      if (!product) return res.status(404).json({ error: true, message: "Product not found" });
+
+      const variantId = req.body?.variantId;
+      const urls = (req.files || []).map((f) => ({
+        url: f?.path || f?.secure_url || "",
+        publicId: f?.filename || f?.public_id || "",
+        mimetype: f?.mimetype || "",
+        size: f?.size || null,
+      })).filter((x) => x.url);
+
+      if (!urls.length) {
+        return res.status(400).json({ error: true, message: "No images uploaded" });
+      }
+
+      if (variantId) {
+        const v = product.variants.id(variantId);
+        if (!v) return res.status(404).json({ error: true, message: "Variant not found" });
+        v.images = [...(v.images || []), ...urls.map((u) => u.url)];
+      } else {
+        product.images = [...(product.images || []), ...urls.map((u) => u.url)];
+      }
+
+      await product.save();
+      return res.status(201).json({ success: true, urls: urls.map((u) => u.url), product });
+    } catch (err) {
+      next(err);
+    }
+  }
+);

@@ -44,8 +44,9 @@ const UserSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: (v) => !v || /^[0-9]{10}$/.test(v),
-        message: "Invalid phone format",
+        // Thai phone number: must start with 0 and be 10 digits
+        validator: (v) => !v || /^0\d{9}$/.test(v),
+        message: "Invalid Thai phone number (format: 0XXXXXXXXX)",
       },
     },
 

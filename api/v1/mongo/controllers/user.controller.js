@@ -4,11 +4,26 @@ import jwt from "jsonwebtoken";
 //POST /api/auth/register
 export const register = async (req, res, next) => {
     try {
-        const { firstname, lastname, email, phone, password, image } = req.body;
+        const { firstname, lastname, email, phone, password, image } = req.body || {};
         const exists = await User.findOne({ email });
         if (exists) return res.status(409).json({ error: true, message: "Email already used "});
 
-        const user = await User.create({ firstname, lastname, email, phone, password, image })
+        // Admin signup via secret (optional, controlled by env)
+        const requestedRole = String(req.body?.role || "user").toLowerCase();
+        let finalRole = "user";
+        if (requestedRole === "admin") {
+            const provided = String(req.body?.adminSecret || "");
+            const configured = process.env.ADMIN_SIGNUP_SECRET || "";
+            if (!configured) {
+                return res.status(403).json({ error: true, code: "ADMIN_SIGNUP_DISABLED", message: "Admin signup is disabled" });
+            }
+            if (provided !== configured) {
+                return res.status(403).json({ error: true, code: "ADMIN_SIGNUP_SECRET_INVALID", message: "Invalid admin signup secret" });
+            }
+            finalRole = "admin";
+        }
+
+        const user = await User.create({ firstname, lastname, email, phone, password, image, role: finalRole });
         return res.status(201).json({ error: false, user }); //password ถูกตัดออกด้วย toJSON แล้ว
     } catch (err) {
         next(err);
