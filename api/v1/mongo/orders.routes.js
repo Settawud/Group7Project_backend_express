@@ -76,6 +76,11 @@ const buildOrderFromCart = async (userId) => {
       const col = await Color.findById(v.colorId);
       if (col) colorName = col.name_en;
     } catch {}
+    const pickFirstImageUrl = (arr) => {
+      const first = Array.isArray(arr) ? arr[0] : null;
+      if (!first) return "";
+      return typeof first === "string" ? first : (first?.url || "");
+    };
     items.push({
       productId: p._id,
       productName: p.name,
@@ -86,7 +91,7 @@ const buildOrderFromCart = async (userId) => {
         price: v.price,
         trial: !!v.trial,
         variantOption: colorName,
-        image: v.images?.[0] || p.images?.[0] || "",
+        image: pickFirstImageUrl(v.images) || pickFirstImageUrl(p.images) || "",
       },
     });
   }

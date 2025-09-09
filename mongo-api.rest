@@ -152,7 +152,7 @@ Content-Type: application/json
       "colorId": "{{colorId}}",
       "price": 13900,
       "quantityInStock": 5,
-      "images": ["/images/desk-black.jpg"]
+      "images": []
     }
   ]
 }
@@ -196,21 +196,33 @@ Content-Type: application/json
   "variants": [ { "colorId": "{{colorId}}", "price": 1, "quantityInStock": 1 } ]
 }
 
-### Products: upload images (admin; to product or variant)
+### Products: upload images to product (admin)
 POST {{base}}/api/v1/mongo/products/{{productId}}/images
 Authorization: Bearer {{adminToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="images"; filename="image1.jpg"
+Content-Disposition: form-data; name="images"; filename="chair.jpg"
 Content-Type: image/jpeg
 
-< ./samples/image1.jpg
+< ./chair.jpg
 --WebAppBoundary
-Content-Disposition: form-data; name="images"; filename="image2.png"
+Content-Disposition: form-data; name="images"; filename="C7-Ergonomic-Chair-1.png"
 Content-Type: image/png
 
-< ./samples/image2.png
+< ./C7-Ergonomic-Chair-1.png
+--WebAppBoundary--
+
+### Products: upload images to variant (admin)
+POST {{base}}/api/v1/mongo/products/{{productId}}/images
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="images"; filename="chair.jpg"
+Content-Type: image/jpeg
+
+< ./chair.jpg
 --WebAppBoundary
 Content-Disposition: form-data; name="variantId"
 

@@ -73,57 +73,111 @@ router.delete("/:productId", jwtBearer, requireRole("admin"), async (req, res, n
   } catch (err) { next(err); }
 });
 
-export default router;
-
 // === Upload product images (admin only) ===
+function requireCloudinaryConfigured(req, res, next) {
+  const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env || {};
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    return res.status(503).json({
+      error: true,
+      message: "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET and restart the server.",
+    });
+  }
+  next();
+}
+
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: "products",
-      resource_type: "image",
-      allowed_formats: ["jpg", "jpeg", "png", "webp"],
-      // public_id: `product_${Date.now()}` // let Cloudinary assign by default
-    };
+  params: async () => ({
+    folder: "products",
+    resource_type: "image",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
+    transformation: [{ quality: "auto", fetch_format: "auto" }],
+  }),
+});
+// ก่อนประกาศ upload = multer(...)
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 10 },
+  fileFilter: (_req, file, cb) => {
+    const mimeOk = /image\/(jpe?g|png|webp)/i.test(file.mimetype || "");
+    const extOk  = /\.(jpe?g|png|webp)$/i.test(file.originalname || "");
+    const ok = mimeOk || extOk;
+    if (!ok) {
+      console.warn('Reject upload:', { mimetype: file.mimetype, name: file.originalname });
+      return cb(new Error("Invalid file type"), false);
+    }
+    cb(null, true);
   },
 });
-const upload = multer({ storage });
+
+// const upload = multer({
+//   storage,
+//   limits: { fileSize: 5 * 1024 * 1024, files: 10 },
+//   fileFilter: (_req, file, cb) => {
+//     const ok = /image\/(jpe?g|png|webp)/.test(file.mimetype || "");
+//     cb(ok ? null : new Error("Invalid file type"), ok);
+//   },
+// });
 
 // POST /api/v1/mongo/products/:productId/images
 router.post(
   "/:productId/images",
   jwtBearer,
   requireRole("admin"),
+  requireCloudinaryConfigured,
   upload.array("images", 10),
   async (req, res, next) => {
     try {
       const product = await Product.findById(req.params.productId);
       if (!product) return res.status(404).json({ error: true, message: "Product not found" });
 
-      const variantId = req.body?.variantId;
-      const urls = (req.files || []).map((f) => ({
-        url: f?.path || f?.secure_url || "",
-        publicId: f?.filename || f?.public_id || "",
-        mimetype: f?.mimetype || "",
-        size: f?.size || null,
-      })).filter((x) => x.url);
+      const variantId = String(req.body?.variantId || "");
+      const files = Array.isArray(req.files) ? req.files : [];
+      const uploaded = files
+        .map((f) => ({
+          url: f?.path || f?.secure_url || "",
+          publicId: f?.filename || f?.public_id || "",
+          mimetype: f?.mimetype || "",
+          size: typeof f?.size === "number" ? f.size : undefined,
+        }))
+        .filter((x) => x.url && x.publicId);
 
-      if (!urls.length) {
+      if (!uploaded.length) {
         return res.status(400).json({ error: true, message: "No images uploaded" });
       }
+
+      const uniqByPublicId = (arr) =>
+        Array.from(new Map(arr.map((it) => [it.publicId, it])).values());
 
       if (variantId) {
         const v = product.variants.id(variantId);
         if (!v) return res.status(404).json({ error: true, message: "Variant not found" });
-        v.images = [...(v.images || []), ...urls.map((u) => u.url)];
+        const existing = Array.isArray(v.images) ? v.images : [];
+        const asObjects = existing.map((it) =>
+          typeof it === "string" ? { url: it, publicId: it } : it
+        );
+        v.images = uniqByPublicId([...asObjects, ...uploaded]);
       } else {
-        product.images = [...(product.images || []), ...urls.map((u) => u.url)];
+        const existing = Array.isArray(product.images) ? product.images : [];
+        const asObjects = existing.map((it) =>
+          typeof it === "string" ? { url: it, publicId: it } : it
+        );
+        product.images = uniqByPublicId([...asObjects, ...uploaded]);
       }
 
       await product.save();
-      return res.status(201).json({ success: true, urls: urls.map((u) => u.url), product });
+      return res.status(201).json({
+        success: true,
+        images: uploaded.map((u) => ({ url: u.url, publicId: u.publicId })),
+        product,
+      });
     } catch (err) {
+      if (err?.message === "Invalid file type") {
+        return res.status(400).json({ error: true, message: "Only JPG/PNG/WebP images are allowed" });
+      }
       next(err);
     }
   }
 );
+
+export default router;

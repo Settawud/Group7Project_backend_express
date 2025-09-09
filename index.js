@@ -7,6 +7,7 @@ import limiter from "./middleware/rateLimiter.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 
+
 dotenv.config();
 
 const app = express();
@@ -81,6 +82,8 @@ app.get("/", (_req, res) => {
       </html>
     `);
 });
+
+
 // Centralized error handling
 app.use(errorHandler);
 
@@ -108,6 +111,9 @@ const PORT = process.env.PORT || 4000;
 
 // Handle unhandled promise rejections globally
 process.on("unhandledRejection", (err) => {
-  console.error("💥 Unhandled Rejection:", err.message);
-  process.exit(1);
+  console.error("💥 Unhandled Rejection:", err?.message || err);
+  // Avoid crashing the dev server on expected request errors (e.g., bad uploads)
+  if (process.env.NODE_ENV === "production") {
+    process.exit(1);
+  }
 });

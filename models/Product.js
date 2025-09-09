@@ -7,7 +7,8 @@ export const variantSchema = new Schema({
   colorId: { type: Schema.Types.ObjectId, ref: "Color", required: true },
   price: { type: Number, required: true },
   quantityInStock: { type: Number, required: true },
-  images: { type: [String], default: [] },
+  // Allow both legacy string URLs and new object entries { url, publicId, mimetype, size }
+  images: { type: [Schema.Types.Mixed], default: [] },
 });
 
 // Main Product schema
@@ -18,7 +19,8 @@ export const productSchema = new Schema({
   trial: { type: Boolean, default: false },
   tags: { type: [String], default: [] },
   material: { type: String, required: true },
-  images: { type: [String], default: [] },
+  // Allow both legacy string URLs and new object entries { url, publicId, mimetype, size }
+  images: { type: [Schema.Types.Mixed], default: [] },
   dimension: {
     width: { type: Number, required: true },
     height: { type: Number, required: true },
