@@ -30,15 +30,35 @@ router.post("/", jwtBearer, async (req, res, next) => {
     }
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
-    const created = await Review.create({
-      productId,
-      userId: req.user.id,
-      rating: Number(rating),
-      comment: comment || "",
-    });
-    res.status(201).json({ success: true, item: created });
+    try {
+      const created = await Review.create({
+        productId,
+        userId: req.user.id,
+        rating: Number(rating),
+        comment: comment || "",
+      });
+      res.status(201).json({ success: true, item: created });
+    } catch (e) {
+      if (e?.code === 11000) {
+        return res.status(409).json({ error: true, message: "You already reviewed this product" });
+      }
+      throw e;
+    }
   } catch (err) { next(err); }
 });
 
 export default router;
 
+// DELETE /api/v1/mongo/reviews/:reviewId (owner or admin)
+router.delete("/:reviewId", jwtBearer, async (req, res, next) => {
+  try {
+    const me = req.user;
+    const rev = await Review.findById(req.params.reviewId);
+    if (!rev) return res.status(404).json({ error: true, message: "Not found" });
+    const isOwner = String(rev.userId) === String(me.id);
+    const isAdmin = me?.role === "admin";
+    if (!isOwner && !isAdmin) return res.status(403).json({ error: true, message: "Forbidden" });
+    await Review.deleteOne({ _id: rev._id });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});

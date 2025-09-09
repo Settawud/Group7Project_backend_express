@@ -24,8 +24,8 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "ada.1757398104@example.com",
-  "password": "secret456"
+  "email": "ada.1757402255@example.com",
+  "password": "secret123"
 }
 
 ###
@@ -140,6 +140,10 @@ GET {{base}}/api/v1/mongo/products
 ### Products: get by id (Mongo)
 GET {{base}}/api/v1/mongo/products/{{productId}}
 
+### Products: get by filter
+// GET /api/v1/mongo/products?q=...&category=...
+GET {{base}}/api/v1/mongo/products
+
 ### Products: patch (Mongo)
 PATCH {{base}}/api/v1/mongo/products/{{productId}}
 Authorization: Bearer {{token}}
@@ -192,13 +196,17 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "quantity": 3
+  "quantity": 1
 }
 
-### Orders: create from cart (Mongo)
+### Orders: create from cart (Mongo) with optional discountCode
 POST {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
+Content-Type: application/json
 
+{
+  // "discountCode": "WELCOME{{ts}}"
+}
 ### Orders: list (Mongo)
 # @name orders_list
 GET {{base}}/api/v1/mongo/orders
@@ -266,7 +274,11 @@ Content-Type: application/json
 }
 
 ### Discounts: list (Mongo)
-GET {{base}}/api/v1/mongo/discounts
+GET {{base}}/api/v1/mongo/discounts/
+Authorization: Bearer {{token}}
+
+### Reviews: delete (owner or admin)
+DELETE {{base}}/api/v1/mongo/reviews/{{reviewId}}
 Authorization: Bearer {{token}}
 
 ### Auth: logout (Mongo)
@@ -276,3 +288,6 @@ Authorization: Bearer {{token}}
 ### Auth: logout-all (Mongo)
 POST {{base}}/api/v1/mongo/auth/logout-all
 Authorization: Bearer {{token}}
+### Admin: seed via script (run in terminal)
+// Run: npm run seed:admin -- --email admin@example.com --password Admin#123 --firstname Admin --lastname User
+// Requires env MONGO_URI (and optional MONGO_DBNAME)

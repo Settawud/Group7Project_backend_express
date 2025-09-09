@@ -10,7 +10,19 @@ router.use(jwtBearer);
 router.get("/", async (req, res, next) => {
   try {
     const items = await UserDiscount.find({ user_id: req.user.id }).sort({ createdAt: -1 }).lean();
-    res.json({ success: true, count: items.length, items });
+    const now = new Date();
+    const withStatus = items.map((d) => {
+      const expired = d.endDate && now > new Date(d.endDate);
+      const notStarted = d.startDate && now < new Date(d.startDate);
+      const usageExceeded = typeof d.usageLimit === "number" && typeof d.usedCount === "number" && d.usedCount >= d.usageLimit;
+      const isValid = !expired && !notStarted && !usageExceeded;
+      let invalidReason = "";
+      if (expired) invalidReason = "expired";
+      else if (notStarted) invalidReason = "not_started";
+      else if (usageExceeded) invalidReason = "usage_limit_reached";
+      return { ...d, isValid, invalidReason };
+    });
+    res.json({ success: true, count: items.length, items: withStatus });
   } catch (err) { next(err); }
 });
 
@@ -24,6 +36,9 @@ router.post("/", async (req, res, next) => {
         return res.status(400).json({ error: true, message: `${k} required` });
       }
     }
+    const rawCode = String(body.code || "");
+    const normCode = rawCode.trim().toUpperCase();
+    if (!normCode) return res.status(400).json({ error: true, message: "code required" });
     if (!["percentage", "fixed"].includes(body.type)) {
       return res.status(400).json({ error: true, message: "type must be 'percentage' or 'fixed'" });
     }
@@ -37,7 +52,7 @@ router.post("/", async (req, res, next) => {
     try {
       const created = await UserDiscount.create({
         user_id: req.user.id,
-        code: body.code,
+        code: normCode,
         description: body.description || "",
         type: body.type,
         value: Number(body.value),
@@ -57,4 +72,3 @@ router.post("/", async (req, res, next) => {
 });
 
 export default router;
-

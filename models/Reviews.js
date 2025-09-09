@@ -10,4 +10,7 @@ const reviewsSchema = new Schema(
   { timestamps: true }
 );
 
+// Prevent duplicate review by the same user on the same product
+reviewsSchema.index({ productId: 1, userId: 1 }, { unique: true });
+
 export const reviews = model("reviews", reviewsSchema);

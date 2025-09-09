@@ -32,6 +32,7 @@ export const login = async (req, res, next) => {
             userId: user._id.toString(),
             email: user.email,
             name: `${user.firstname || ""} ${user.lastname || ""}`.trim(),
+            role: user.role || "user",
             sv: user.sessionsVersion,
           },
           process.env.JWT_SECRET || "dev_secret",

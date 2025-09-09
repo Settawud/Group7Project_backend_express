@@ -1,5 +1,6 @@
 import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
+import requireRole from "../../../middleware/requireRole.js";
 import { Product } from "../../../models/Product.js";
 
 const router = express.Router();
@@ -40,7 +41,7 @@ router.get("/:productId", async (req, res, next) => {
 });
 
 // POST /api/v1/mongo/products (auth required)
-router.post("/", jwtBearer, async (req, res, next) => {
+router.post("/", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const created = await Product.create(req.body || {});
     res.status(201).json({ success: true, item: created });
@@ -48,7 +49,7 @@ router.post("/", jwtBearer, async (req, res, next) => {
 });
 
 // PATCH /api/v1/mongo/products/:productId
-router.patch("/:productId", jwtBearer, async (req, res, next) => {
+router.patch("/:productId", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const updated = await Product.findByIdAndUpdate(
       req.params.productId,
@@ -61,7 +62,7 @@ router.patch("/:productId", jwtBearer, async (req, res, next) => {
 });
 
 // DELETE /api/v1/mongo/products/:productId
-router.delete("/:productId", jwtBearer, async (req, res, next) => {
+router.delete("/:productId", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.productId);
     if (!deleted) return res.status(404).json({ error: true, message: "Not found" });
@@ -70,4 +71,3 @@ router.delete("/:productId", jwtBearer, async (req, res, next) => {
 });
 
 export default router;
-

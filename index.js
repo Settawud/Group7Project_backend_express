@@ -96,13 +96,6 @@ const PORT = process.env.PORT || 4000;
       console.log("MONGO_URI not set — skipping Mongo connection");
     }
 
-    // Optional: connect to Turso if configured
-    // if (process.env.TURSO_DB_URL) {
-    //   const { connectTurso } = await import("./config/turso.js");
-    //   await connectTurso();
-    // } else {
-    //   console.log("TURSO_DB_URL not set — skipping Turso connection");
-    // }
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT} ✅`);
       console.log(`http://localhost:4000`)

@@ -10,7 +10,7 @@ export default async function jwtBearer(req, res, next) {
   }
   try {
     const decoded = jwt.verify(useToken, process.env.JWT_SECRET || "dev_secret");
-    req.user = { id: decoded.userId, email: decoded.email, name: decoded.name };
+    req.user = { id: decoded.userId, email: decoded.email, name: decoded.name, role: decoded.role };
 
     // Optional sessionVersion check (Mongo-backed tokens only)
     if (typeof decoded.sv === "number" && process.env.MONGO_URI) {

@@ -1,5 +1,6 @@
 import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
+import requireRole from "../../../middleware/requireRole.js";
 import { Color } from "../../../models/Color.js";
 
 const router = express.Router();
@@ -22,7 +23,7 @@ router.get("/:colorId", async (req, res, next) => {
 });
 
 // POST /api/v1/mongo/colors (auth)
-router.post("/", jwtBearer, async (req, res, next) => {
+router.post("/", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const created = await Color.create(req.body || {});
     res.status(201).json({ success: true, item: created });
@@ -30,7 +31,7 @@ router.post("/", jwtBearer, async (req, res, next) => {
 });
 
 // PATCH /api/v1/mongo/colors/:colorId (auth)
-router.patch("/:colorId", jwtBearer, async (req, res, next) => {
+router.patch("/:colorId", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const updated = await Color.findByIdAndUpdate(
       req.params.colorId,
@@ -43,7 +44,7 @@ router.patch("/:colorId", jwtBearer, async (req, res, next) => {
 });
 
 // DELETE /api/v1/mongo/colors/:colorId (auth)
-router.delete("/:colorId", jwtBearer, async (req, res, next) => {
+router.delete("/:colorId", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const deleted = await Color.findByIdAndDelete(req.params.colorId);
     if (!deleted) return res.status(404).json({ error: true, message: "Not found" });
@@ -52,4 +53,3 @@ router.delete("/:colorId", jwtBearer, async (req, res, next) => {
 });
 
 export default router;
-

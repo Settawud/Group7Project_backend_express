@@ -54,6 +54,7 @@ const UserSchema = new Schema(
     password: { type: String, required: true, minlength: 6, select: false },
 
     image: { type: String, trim: true },   // รูปโปรไฟล์
+    role: { type: String, enum: ["admin", "user"], default: "user" },
     resetTokenHash: { type: String, default: null },  // เก็บ hash ของ token รีเซ็ตรหัสผ่าน
     resetTokenExpires: { type: Date, default: null }, // วันหมดอายุของ token
     sessionsVersion: { type: Number, default: 0 },    // ใช้บังคับให้ logout ทุก session ได้

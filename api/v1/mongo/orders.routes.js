@@ -5,10 +5,61 @@ import { Order } from "../../../models/Order.js";
 import { Cart } from "../../../models/Cart.js";
 import { Product } from "../../../models/Product.js";
 import { Color } from "../../../models/Color.js";
+import { userDiscounts as UserDiscount } from "../../../models/Discounts.js";
 
 const router = express.Router();
 
 router.use(jwtBearer);
+
+// Validate and compute discount amount for a given user and subtotal
+function discountError(code, message, statusCode = 400, extra = {}) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  err.code = code;
+  Object.assign(err, extra);
+  return err;
+}
+
+async function validateAndComputeDiscount(userId, subtotal, code) {
+  if (!code || typeof code !== "string") return { amount: 0, code: "" };
+  const now = new Date();
+  const norm = code.trim().toUpperCase();
+  const disc =
+    (await UserDiscount.findOne({ user_id: userId, code: norm })) ||
+    (await UserDiscount.findOne({ user_id: userId, code: code.trim() })); // fallback for legacy lowercase codes
+  if (!disc) {
+    throw discountError("DISCOUNT_INVALID", "Invalid discount code");
+  }
+  if (disc.startDate && now < disc.startDate) {
+    throw discountError("DISCOUNT_NOT_STARTED", "Discount not yet active");
+  }
+  if (disc.endDate && now > disc.endDate) {
+    throw discountError("DISCOUNT_EXPIRED", "Discount expired");
+  }
+  if (typeof disc.usageLimit === "number" && typeof disc.usedCount === "number" && disc.usedCount >= disc.usageLimit) {
+    throw discountError("DISCOUNT_USAGE_LIMIT", "Discount usage limit reached");
+  }
+  if (typeof disc.minOrderAmount === "number" && subtotal < disc.minOrderAmount) {
+    throw discountError(
+      "DISCOUNT_MIN_AMOUNT",
+      `Minimum order amount for this code is ${disc.minOrderAmount}`,
+      400,
+      { minOrderAmount: disc.minOrderAmount }
+    );
+  }
+
+  let amount = 0;
+  if (disc.type === "percentage") {
+    amount = (subtotal * Number(disc.value || 0)) / 100;
+    if (typeof disc.maxDiscount === "number") amount = Math.min(amount, disc.maxDiscount);
+  } else if (disc.type === "fixed") {
+    amount = Number(disc.value || 0);
+  }
+  if (!Number.isFinite(amount) || amount <= 0) amount = 0;
+  amount = Math.min(amount, subtotal); // never exceed subtotal
+  return { amount, code: norm };
+}
+
 
 const buildOrderFromCart = async (userId) => {
   const cart = await Cart.findOne({ userId });
@@ -74,6 +125,20 @@ router.post("/", async (req, res, next) => {
     const uid = new mongoose.Types.ObjectId(req.user.id);
     const payload = await buildOrderFromCart(uid);
     if (!payload) return res.status(400).json({ error: true, message: "Cart empty or invalid" });
+    const discountCode = (req.body?.discountCode || req.body?.discount || "").trim();
+    // If user provided a discount code, validate and compute amount
+    if (discountCode) {
+      try {
+        const { amount, code } = await validateAndComputeDiscount(uid, payload.subtotalAmount, discountCode);
+        payload.discountAmount = amount;
+        payload.discountCode = code;
+      } catch (e) {
+        if (e?.statusCode === 400) {
+          return res.status(400).json({ error: true, code: e.code || "DISCOUNT_INVALID", message: e.message, ...(e.minOrderAmount ? { minOrderAmount: e.minOrderAmount } : {}) });
+        }
+        throw e;
+      }
+    }
     // Optional shipping override from body
     const ship = req.body?.shipping || {};
     if (ship && typeof ship === 'object') {
@@ -85,6 +150,13 @@ router.post("/", async (req, res, next) => {
       };
     }
     const created = await Order.create(payload);
+    // If discount was applied successfully, increase usedCount using normalized code
+    if (payload.discountCode) {
+      await UserDiscount.updateOne(
+        { user_id: uid, code: payload.discountCode },
+        { $inc: { usedCount: 1 } }
+      );
+    }
     // Clear cart
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
     res.status(201).json({ success: true, item: created });
