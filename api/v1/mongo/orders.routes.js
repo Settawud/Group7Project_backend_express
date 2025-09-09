@@ -55,13 +55,7 @@ const buildOrderFromCart = async (userId) => {
     discountAmount: discount,
     installationFee,
     items,
-    shipping: {
-      address: "",
-      trackingNumber: "",
-      deliveryStatus: "Pending",
-      shippedAt: null,
-      deliveredAt: null,
-    },
+    shipping: {},
   };
 };
 
@@ -80,6 +74,16 @@ router.post("/", async (req, res, next) => {
     const uid = new mongoose.Types.ObjectId(req.user.id);
     const payload = await buildOrderFromCart(uid);
     if (!payload) return res.status(400).json({ error: true, message: "Cart empty or invalid" });
+    // Optional shipping override from body
+    const ship = req.body?.shipping || {};
+    if (ship && typeof ship === 'object') {
+      payload.shipping = {
+        ...payload.shipping,
+        address: ship.address ?? payload.shipping.address,
+        trackingNumber: ship.trackingNumber ?? payload.shipping.trackingNumber,
+        deliveryStatus: ship.deliveryStatus ?? payload.shipping.deliveryStatus,
+      };
+    }
     const created = await Order.create(payload);
     // Clear cart
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
@@ -97,5 +101,41 @@ router.get("/:orderId", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-export default router;
+// PATCH /api/v1/mongo/orders/:orderId/shipping
+router.patch("/:orderId/shipping", async (req, res, next) => {
+  try {
+    const uid = new mongoose.Types.ObjectId(req.user.id);
+    const { address, trackingNumber, deliveryStatus } = req.body || {};
 
+    const order = await Order.findOne({ _id: req.params.orderId, userId: uid });
+    if (!order) return res.status(404).json({ error: true, message: "Not found" });
+
+    const allowed = ["Pending", "Shipped", "Delivered"];
+    if (deliveryStatus && !allowed.includes(deliveryStatus)) {
+      return res.status(400).json({ error: true, message: "Invalid deliveryStatus" });
+    }
+
+    if (typeof address === "string") order.shipping.address = address;
+    if (typeof trackingNumber === "string") order.shipping.trackingNumber = trackingNumber;
+
+    if (deliveryStatus) {
+      const prev = order.shipping.deliveryStatus;
+      order.shipping.deliveryStatus = deliveryStatus;
+      // keep orderStatus in sync
+      order.orderStatus = deliveryStatus;
+      const now = new Date();
+      if (deliveryStatus === "Shipped" && !order.shipping.shippedAt) {
+        order.shipping.shippedAt = now;
+      }
+      if (deliveryStatus === "Delivered") {
+        if (!order.shipping.shippedAt) order.shipping.shippedAt = now;
+        order.shipping.deliveredAt = now;
+      }
+    }
+
+    await order.save();
+    res.json({ success: true, item: order });
+  } catch (err) { next(err); }
+});
+
+export default router;

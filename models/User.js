@@ -44,7 +44,7 @@ const UserSchema = new Schema(
       type: String,
       trim: true,
       validate: {
-        validator: (v) => !v || /^[0-9+\-\s()]{6,20}$/.test(v),
+        validator: (v) => !v || /^[0-9]{10}$/.test(v),
         message: "Invalid phone format",
       },
     },

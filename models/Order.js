@@ -32,9 +32,9 @@ const orderSchema = new Schema({
         }
     },
     shipping: {
-        address: { type: String, required: true },
-        trackingNumber: { type: String, required: true },
-        deliveryStatus: { type: String, enum: ['Pending', 'Shipped', 'Delivered'], required: true },
+        address: { type: String, required: false, default: "" },
+        trackingNumber: { type: String, required: false, default: "" },
+        deliveryStatus: { type: String, enum: ['Pending', 'Shipped', 'Delivered'], required: true, default: 'Pending' },
         shippedAt: { type: Date, default: null },
         deliveredAt: { type: Date, default: null }
     }

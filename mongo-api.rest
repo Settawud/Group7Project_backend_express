@@ -1,50 +1,53 @@
+@base = http://localhost:4000
 @ts = {{$timestamp}}
 @email = ada.{{ts}}@example.com
 
 ### Health: DB
-GET http://localhost:4000/health/db
+GET {{base}}/health/db
 
-### Mongo Auth: register
-POST http://localhost:4000/api/v1/mongo/auth/register
+### Auth: register (Mongo)
+POST {{base}}/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
   "firstname": "Ada",
   "lastname": "Lovelace",
   "email": "{{email}}",
-  "phone": "+66801234567",
+  "phone": "0801234567",
   "password": "secret123",
   "image": ""
 }
 
-### Mongo Auth: login
-# @name mongo_login
-POST http://localhost:4000/api/v1/mongo/auth/login
+### Auth: login (Mongo)
+# @name login
+POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "ada.1757361070@example.com",
-  "password": "secret123"
+  "email": "ada.1757398104@example.com",
+  "password": "secret456"
 }
 
-//@token = {{mongo_login.response.body.token}}
+###
+@token = {{login.response.body.token}}
 
-### Mongo Users: me
-GET http://localhost:4000/api/v1/mongo/users/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Users: me
+GET {{base}}/api/v1/mongo/users/me
+Authorization: Bearer {{token}}
 
-### Mongo Users: update me
-PATCH http://localhost:4000/api/v1/mongo/users/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Users: update me
+PATCH {{base}}/api/v1/mongo/users/me
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "firstname": "Ada",
-  "lastname": "L."
+  "lastname": "L.",
+  "phone": "0123456789"
 }
 
-### Mongo Users: change password
-PATCH http://localhost:4000/api/v1/mongo/users/me/password
+### Users: change password
+PATCH {{base}}/api/v1/mongo/users/me/password
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
@@ -53,26 +56,58 @@ Content-Type: application/json
   "newPassword": "secret456"
 }
 
-### Colors (Mongo): list
-# @name colors_list
-GET http://localhost:4000/api/v1/mongo/colors
-
-@colorId = {{colors_list.response.body.items[0].id}}
-
-### Colors (Mongo): create (requires auth)
-POST http://localhost:4000/api/v1/mongo/colors
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Colors: create (Mongo)
+# @name colors_create
+POST {{base}}/api/v1/mongo/colors
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "name_th": "สีฟ้า",
-  "name_en": "Blue",
-  "hex": "#3b82f6"
+  "name_th": "สีดำ",
+  "name_en": "Black",
+  "hex": "#000000"
 }
 
-### Products (Mongo): create (auth required)
-POST http://localhost:4000/api/v1/mongo/products
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+###
+@colorId = {{colors_create.response.body.item._id}}
+
+### Colors: list (Mongo)
+GET {{base}}/api/v1/mongo/colors
+
+### Colors: get by id (Mongo)
+GET {{base}}/api/v1/mongo/colors/{{colorId}}
+
+### Colors: patch (Mongo)
+PATCH {{base}}/api/v1/mongo/colors/{{colorId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name_en": "Jet Black"
+}
+
+### Colors: delete (Mongo) temp
+# @name colors_tmp_create
+POST {{base}}/api/v1/mongo/colors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name_th": "สีเทา",
+  "name_en": "Gray",
+  "hex": "#888888"
+}
+
+###
+@colorTmpId = {{colors_tmp_create.response.body.item._id}}
+
+DELETE {{base}}/api/v1/mongo/colors/{{colorTmpId}}
+Authorization: Bearer {{token}}
+
+### Products: create (Mongo)
+# @name product_create
+POST {{base}}/api/v1/mongo/products
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -95,23 +130,54 @@ Content-Type: application/json
   ]
 }
 
-### Products (Mongo): list (grab ids)
-# @name products_list
-GET http://localhost:4000/api/v1/mongo/products
+###
+@productId = {{product_create.response.body.item._id}}
+@variantId = {{product_create.response.body.item.variants[0]._id}}
 
-@productId = {{products_list.response.body.items[0].id}}
-@variantId = {{products_list.response.body.items[0].variants[0].id}}
+### Products: list (Mongo)
+GET {{base}}/api/v1/mongo/products
 
-### Products (Mongo): detail by productId
-GET http://localhost:4000/api/v1/mongo/products/{{productId}}
+### Products: get by id (Mongo)
+GET {{base}}/api/v1/mongo/products/{{productId}}
 
-### Cart (Mongo): get (auth required)
-GET http://localhost:4000/api/v1/mongo/cart
+### Products: patch (Mongo)
+PATCH {{base}}/api/v1/mongo/products/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "material": "Steel/Wood/Glass"
+}
+
+### Products: delete (Mongo) temp product
+# @name product_tmp_create
+POST {{base}}/api/v1/mongo/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Temp Product",
+  "description": "will be deleted",
+  "category": "test",
+  "trial": false,
+  "material": "Test",
+  "dimension": { "width": 1, "height": 1, "depth": 1, "weight": 1 },
+  "variants": [ { "colorId": "{{colorId}}", "price": 1, "quantityInStock": 1 } ]
+}
+
+###
+@productTmpId = {{product_tmp_create.response.body.item._id}}
+
+DELETE {{base}}/api/v1/mongo/products/{{productTmpId}}
 Authorization: Bearer {{token}}
 
-### Cart (Mongo): add item (productId + variantId)
-POST http://localhost:4000/api/v1/mongo/cart/items
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Cart: get (Mongo)
+GET {{base}}/api/v1/mongo/cart
+Authorization: Bearer {{token}}
+
+### Cart: add item (Mongo)
+POST {{base}}/api/v1/mongo/cart/items
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -120,17 +186,93 @@ Content-Type: application/json
   "quantity": 1
 }
 
-### Orders (Mongo): create from cart
-POST http://localhost:4000/api/v1/mongo/orders
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
-### Orders (Mongo): list
-GET http://localhost:4000/api/v1/mongo/orders
+### Cart: update quantity (Mongo)
+PATCH {{base}}/api/v1/mongo/cart/items/{{productId}}/{{variantId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "quantity": 3
+}
+
+### Orders: create from cart (Mongo)
+POST {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
 
-### Mongo Auth: logout (clear cookie, client should also discard token)
-POST http://localhost:4000/api/v1/mongo/auth/logout
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+### Orders: list (Mongo)
+# @name orders_list
+GET {{base}}/api/v1/mongo/orders
+Authorization: Bearer {{token}}
 
-### Mongo Auth: logout-all (revoke all sessions)
-POST http://localhost:4000/api/v1/mongo/auth/logout-all
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGJmMmZmMzBkZTVkMTc0OTY1NWI0MTgiLCJlbWFpbCI6ImFkYS4xNzU3MzYwMTE0QGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInN2IjowLCJpYXQiOjE3NTczNjAzMzcsImV4cCI6MTc1Nzk2NTEzN30.RVsBbr2TTeXm4nusXlUbhlAZThihglXcqcbAmpyiY9g
+###
+@orderId = {{orders_list.response.body.items[0]._id}}
+
+### Orders: get by id (Mongo)
+GET {{base}}/api/v1/mongo/orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+### Orders: update shipping to Shipped (Mongo)
+PATCH {{base}}/api/v1/mongo/orders/{{orderId}}/shipping
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "address": "99/11 หมู่บ้านตัวอย่าง, เขตเมือง, นนทบุรี",
+  "trackingNumber": "TH{{ts}}",
+  "deliveryStatus": "Shipped"
+}
+
+### Orders: update shipping to Delivered (Mongo)
+PATCH {{base}}/api/v1/mongo/orders/{{orderId}}/shipping
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "deliveryStatus": "Delivered"
+}
+
+### Reviews: create (Mongo)
+POST {{base}}/api/v1/mongo/reviews
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": "{{productId}}",
+  "rating": 5,
+  "comment": "ยอดเยี่ยมมาก นั่งสบาย"
+}
+
+### Reviews: list by product (Mongo)
+GET {{base}}/api/v1/mongo/reviews/product/{{productId}}
+
+### Reviews: my reviews (Mongo)
+GET {{base}}/api/v1/mongo/reviews/me
+Authorization: Bearer {{token}}
+
+### Discounts: create (Mongo)
+POST {{base}}/api/v1/mongo/discounts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "WELCOME{{ts}}",
+  "description": "ส่วนลดเปิดใช้งานครั้งแรก",
+  "type": "percentage",
+  "value": 10,
+  "maxDiscount": 500,
+  "minOrderAmount": 1000,
+  "startDate": "2025-01-01T00:00:00.000Z",
+  "endDate": "2025-12-31T23:59:59.000Z"
+}
+
+### Discounts: list (Mongo)
+GET {{base}}/api/v1/mongo/discounts
+Authorization: Bearer {{token}}
+
+### Auth: logout (Mongo)
+POST {{base}}/api/v1/mongo/auth/logout
+Authorization: Bearer {{token}}
+
+### Auth: logout-all (Mongo)
+POST {{base}}/api/v1/mongo/auth/logout-all
+Authorization: Bearer {{token}}
