@@ -1,77 +1,42 @@
 import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
 import requireRole from "../../../middleware/requireRole.js";
-import { Product } from "../../../models/Product.js";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import cloudinary from "../../../config/cloudinary.js";
+import {
+  listProducts,
+  getProduct,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductImages,
+  deleteProductImage,
+  listVariants,
+  getVariant,
+  createVariant,
+  updateVariant,
+  deleteVariant,
+  uploadVariantImages,
+  deleteVariantImage,
+} from "./controllers/product.controller.js";
 
 const router = express.Router();
-
+            
 // GET /api/v1/mongo/products?q=...&category=...
-router.get("/", async (req, res, next) => {
-  try {
-    const { q, category } = req.query || {};
-    const filter = {};
-    if (category) filter.category = category;
-    const term = (q || "").trim();
-    const query = term
-      ? {
-          $and: [
-            filter,
-            {
-              $or: [
-                { name: { $regex: term, $options: "i" } },
-                { description: { $regex: term, $options: "i" } },
-                { tags: { $in: [new RegExp(term, "i")] } },
-              ],
-            },
-          ],
-        }
-      : filter;
-    const items = await Product.find(query).lean();
-    res.json({ success: true, count: items.length, items });
-  } catch (err) { next(err); }
-});
+router.get("/", listProducts);
 
 // GET /api/v1/mongo/products/:productId
-router.get("/:productId", async (req, res, next) => {
-  try {
-    const item = await Product.findById(req.params.productId).lean();
-    if (!item) return res.status(404).json({ error: true, message: "Not found" });
-    res.json({ success: true, item });
-  } catch (err) { next(err); }
-});
+router.get("/:productId", getProduct);
 
 // POST /api/v1/mongo/products (auth required)
-router.post("/", jwtBearer, requireRole("admin"), async (req, res, next) => {
-  try {
-    const created = await Product.create(req.body || {});
-    res.status(201).json({ success: true, item: created });
-  } catch (err) { next(err); }
-});
+router.post("/", jwtBearer, requireRole("admin"), createProduct);
 
 // PATCH /api/v1/mongo/products/:productId
-router.patch("/:productId", jwtBearer, requireRole("admin"), async (req, res, next) => {
-  try {
-    const updated = await Product.findByIdAndUpdate(
-      req.params.productId,
-      { $set: req.body || {} },
-      { new: true, runValidators: true }
-    );
-    if (!updated) return res.status(404).json({ error: true, message: "Not found" });
-    res.json({ success: true, item: updated });
-  } catch (err) { next(err); }
-});
+router.patch("/:productId", jwtBearer, requireRole("admin"), updateProduct);
 
 // DELETE /api/v1/mongo/products/:productId
-router.delete("/:productId", jwtBearer, requireRole("admin"), async (req, res, next) => {
-  try {
-    const deleted = await Product.findByIdAndDelete(req.params.productId);
-    if (!deleted) return res.status(404).json({ error: true, message: "Not found" });
-    res.json({ success: true });
-  } catch (err) { next(err); }
-});
+router.delete("/:productId", jwtBearer, requireRole("admin"), deleteProduct);
 
 // === Upload product images (admin only) ===
 function requireCloudinaryConfigured(req, res, next) {
@@ -126,58 +91,64 @@ router.post(
   requireRole("admin"),
   requireCloudinaryConfigured,
   upload.array("images", 10),
-  async (req, res, next) => {
-    try {
-      const product = await Product.findById(req.params.productId);
-      if (!product) return res.status(404).json({ error: true, message: "Product not found" });
+  uploadProductImages
+);
 
-      const variantId = String(req.body?.variantId || "");
-      const files = Array.isArray(req.files) ? req.files : [];
-      const uploaded = files
-        .map((f) => ({
-          url: f?.path || f?.secure_url || "",
-          publicId: f?.filename || f?.public_id || "",
-          mimetype: f?.mimetype || "",
-          size: typeof f?.size === "number" ? f.size : undefined,
-        }))
-        .filter((x) => x.url && x.publicId);
+// DELETE product-level image by publicId
+// Support deleting by publicId containing slashes (e.g., "products/abc123")
+router.delete(
+  "/:productId/images/:publicId",
+  jwtBearer,
+  requireRole("admin"),
+  deleteProductImage
+);
+// Alternative: delete by query param to avoid URL-encoding slashes in publicId
+router.delete(
+  "/:productId/images",
+  jwtBearer,
+  requireRole("admin"),
+  deleteProductImage
+);
 
-      if (!uploaded.length) {
-        return res.status(400).json({ error: true, message: "No images uploaded" });
-      }
+// === Variants nested routes ===
+// GET /api/v1/mongo/products/:productId/variants
+router.get("/:productId/variants", listVariants);
 
-      const uniqByPublicId = (arr) =>
-        Array.from(new Map(arr.map((it) => [it.publicId, it])).values());
+// GET /api/v1/mongo/products/:productId/variants/:variantId
+router.get("/:productId/variants/:variantId", getVariant);
 
-      if (variantId) {
-        const v = product.variants.id(variantId);
-        if (!v) return res.status(404).json({ error: true, message: "Variant not found" });
-        const existing = Array.isArray(v.images) ? v.images : [];
-        const asObjects = existing.map((it) =>
-          typeof it === "string" ? { url: it, publicId: it } : it
-        );
-        v.images = uniqByPublicId([...asObjects, ...uploaded]);
-      } else {
-        const existing = Array.isArray(product.images) ? product.images : [];
-        const asObjects = existing.map((it) =>
-          typeof it === "string" ? { url: it, publicId: it } : it
-        );
-        product.images = uniqByPublicId([...asObjects, ...uploaded]);
-      }
+// POST /api/v1/mongo/products/:productId/variants (admin)
+router.post("/:productId/variants", jwtBearer, requireRole("admin"), createVariant);
 
-      await product.save();
-      return res.status(201).json({
-        success: true,
-        images: uploaded.map((u) => ({ url: u.url, publicId: u.publicId })),
-        product,
-      });
-    } catch (err) {
-      if (err?.message === "Invalid file type") {
-        return res.status(400).json({ error: true, message: "Only JPG/PNG/WebP images are allowed" });
-      }
-      next(err);
-    }
-  }
+// PATCH /api/v1/mongo/products/:productId/variants/:variantId (admin)
+router.patch("/:productId/variants/:variantId", jwtBearer, requireRole("admin"), updateVariant);
+
+// DELETE /api/v1/mongo/products/:productId/variants/:variantId (admin)
+router.delete("/:productId/variants/:variantId", jwtBearer, requireRole("admin"), deleteVariant);
+
+// POST /api/v1/mongo/products/:productId/variants/:variantId/images (admin)
+// Alias of the product images endpoint but targets a specific variant via URL params.
+router.post(
+  "/:productId/variants/:variantId/images",
+  jwtBearer,
+  requireRole("admin"),
+  requireCloudinaryConfigured,
+  upload.array("images", 10),
+  uploadVariantImages
+);
+
+// DELETE variant image by publicId
+router.delete(
+  "/:productId/variants/:variantId/images/:publicId",
+  jwtBearer,
+  requireRole("admin"),
+  deleteVariantImage
+);
+router.delete(
+  "/:productId/variants/:variantId/images",
+  jwtBearer,
+  requireRole("admin"),
+  deleteVariantImage
 );
 
 export default router;

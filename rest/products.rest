@@ -1,0 +1,119 @@
+@base = http://localhost:4000
+@ts = {{$timestamp}}
+
+### Login admin
+# @name login_admin
+POST {{base}}/api/v1/mongo/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin3@example.com",
+  "password": "Admin#123"
+}
+
+###
+@adminToken = {{login_admin.response.body.token}}
+
+### Prepare: create a color (for variant)
+# @name color_create
+POST {{base}}/api/v1/mongo/colors
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name_th": "สีเทา",
+  "name_en": "Gray",
+  "hex": "#888888"
+}
+
+###
+@colorId = {{color_create.response.body.item._id}}
+
+### Products: create
+# @name product_create
+POST {{base}}/api/v1/mongo/products
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Ergonomic Chair {{ts}}",
+  "description": "Comfortable and supportive chair",
+  "category": "furniture",
+  "trial": false,
+  "tags": ["office", "chair"],
+  "material": "Mesh, Steel",
+  "Thumbnails": [],
+  "dimension": { "width": 70, "height": 120, "depth": 60, "weight": 20 },
+  "variants": [
+    { "trial": false, "colorId": "{{colorId}}", "price": 9900, "quantityInStock": 10, "images": [] }
+  ]
+}
+
+###
+@productId = {{product_create.response.body.item._id}}
+@variantId = {{product_create.response.body.item.variants[0]._id}}
+
+### Products: list
+GET {{base}}/api/v1/mongo/products
+
+### Products: get by id
+GET {{base}}/api/v1/mongo/products/{{productId}}
+
+### Products: upload images to product
+# @name upload_product_images
+POST {{base}}/api/v1/mongo/products/{{productId}}/images
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="images"; filename="chair.jpg"
+Content-Type: image/jpeg
+
+< ./chair.jpg
+--WebAppBoundary--
+
+###
+@productPublicId = {{upload_product_images.response.body.images[0].publicId}}
+
+### Products: upload images to variant
+# @name upload_variant_images
+POST {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="images"; filename="chair.jpg"
+Content-Type: image/jpeg
+
+< ./chair.jpg
+--WebAppBoundary--
+
+###
+@variantPublicId = {{upload_variant_images.response.body.images[0].publicId}}
+
+### Variants: list
+GET {{base}}/api/v1/mongo/products/{{productId}}/variants
+
+### Variants: patch
+PATCH {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "price": 107700,
+  "quantityInStock": 8
+}
+
+
+### Product images: delete one (query param, no encoding needed)
+DELETE {{base}}/api/v1/mongo/products/{{productId}}/images?publicId={{productPublicId}}
+Authorization: Bearer {{adminToken}}
+
+
+### Variant images: delete one (query param)
+DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId}}
+Authorization: Bearer {{adminToken}}
+
+### Products: delete (admin)
+DELETE {{base}}/api/v1/mongo/products/{{productId}}
+Authorization: Bearer {{adminToken}}

@@ -7,8 +7,8 @@ import mongoCart from "./mongo/cart.routes.js";
 import mongoOrders from "./mongo/orders.routes.js";
 import mongoReviews from "./mongo/reviews.routes.js";
 import mongoDiscounts from "./mongo/discounts.routes.js";
-import jwtBearer from "../../middleware/jwtBearer.js";
-import { register, login, me, updateMe, changePassword, logout, logoutAll } from "./mongo/controllers/user.controller.js";
+import mongoUsersRoutes from "./mongo/users.routes.js";
+import mongoAuth from "./mongo/auth.routes.js";
 
 export default (db) => {
   const router = express.Router();
@@ -21,17 +21,13 @@ export default (db) => {
   // E-commerce API v1 (Mongo-only)
 
   // Mongo-backed auth/users (separate namespace)
-  router.post("/api/v1/mongo/auth/register", register);
-  router.post("/api/v1/mongo/auth/login", login);
-  router.post("/api/v1/mongo/auth/logout", jwtBearer, logout);
-  router.post("/api/v1/mongo/auth/logout-all", jwtBearer, logoutAll);
-  router.get("/api/v1/mongo/users/me", jwtBearer, me);
-  router.patch("/api/v1/mongo/users/me", jwtBearer, updateMe);
-  router.patch("/api/v1/mongo/users/me/password", jwtBearer, changePassword);
+  router.use("/api/v1/mongo/auth", mongoAuth);
 
   // Mongo product/color/cart/order routes
+
   router.use("/api/v1/mongo/products", mongoProducts);
   router.use("/api/v1/mongo/colors", mongoColors);
+  router.use("/api/v1/mongo/users", mongoUsersRoutes);
   router.use("/api/v1/mongo/cart", mongoCart);
   router.use("/api/v1/mongo/orders", mongoOrders);
   router.use("/api/v1/mongo/reviews", mongoReviews);
