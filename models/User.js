@@ -8,9 +8,18 @@ const { ObjectId } = mongoose.Schema.Types;
 // _id: false = ไม่ต้องสร้าง id แยกให้กับทุก address
 const AddressSchema = new Schema(
   {
-    address_id: { type: ObjectId, required: true }, // id อ้างอิงของ address
-    building_no: { type: String, trim: true },      // บ้านเลขที่/อาคาร
-    detail: { type: String, trim: true },           // รายละเอียดที่อยู่
+    addressId: { type: ObjectId, required: true }, // id อ้างอิงของ address
+    buildingNo: { type: String, trim: true },      // บ้านเลขที่/อาคาร
+    detail: { type: String, trim: true },          // รายละเอียดที่อยู่
+    postcode: {
+      type: String,
+      trim: true,
+      validate: {
+        // Thai postal code: 5 digits
+        validator: (v) => !v || /^\d{5}$/.test(v),
+        message: "Invalid Thai postal code (5 digits)",
+      },
+    },
     subdistrict: { type: ObjectId, ref: "Subdistrict", required: true },
     district: { type: ObjectId, ref: "District", required: true },
     province: { type: ObjectId, ref: "Province", required: true },
@@ -23,8 +32,8 @@ const AddressSchema = new Schema(
 // โครงสร้างข้อมูล "ผู้ใช้"
 const UserSchema = new Schema(
   {
-    firstname: { type: String, required: true, trim: true }, // ชื่อจริง
-    lastname: { type: String, required: true, trim: true },  // นามสกุล
+    firstName: { type: String, required: true, trim: true }, // ชื่อจริง
+    lastName: { type: String, required: true, trim: true },  // นามสกุล
 
     // อีเมล: ห้ามซ้ำ, ต้องตรงรูปแบบอีเมล, แปลงเป็นตัวเล็กอัตโนมัติ
     email: {
@@ -52,16 +61,16 @@ const UserSchema = new Schema(
 
     // รหัสผ่าน: ต้องยาว ≥ 6 ตัวอักษร
     // select:false = เวลา query ปกติจะไม่ส่ง password กลับมา
-  password: { type: String, required: true, minlength: 6, select: false },
+    password: { type: String, required: true, minlength: 6, select: false },
 
-  image: { type: String, trim: true },   // รูปโปรไฟล์
-  emailVerified: { type: Boolean, default: false },
-  emailVerifyTokenHash: { type: String, default: null },
-  emailVerifyTokenExpires: { type: Date, default: null },
-  role: { type: String, enum: ["admin", "user"], default: "user" },
-  resetTokenHash: { type: String, default: null },  // เก็บ hash ของ token รีเซ็ตรหัสผ่าน
-  resetTokenExpires: { type: Date, default: null }, // วันหมดอายุของ token
-  sessionsVersion: { type: Number, default: 0 },    // ใช้บังคับให้ logout ทุก session ได้
+    image: { type: String, trim: true },   // รูปโปรไฟล์
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyTokenHash: { type: String, default: null },
+    emailVerifyTokenExpires: { type: Date, default: null },
+    role: { type: String, enum: ["admin", "user"], default: "user" },
+    resetTokenHash: { type: String, default: null },  // เก็บ hash ของ token รีเซ็ตรหัสผ่าน
+    resetTokenExpires: { type: Date, default: null }, // วันหมดอายุของ token
+    sessionsVersion: { type: Number, default: 0 },    // ใช้บังคับให้ logout ทุก session ได้
     addresses: { type: [AddressSchema], default: [] }, // ที่อยู่หลายรายการ
   },
   {
@@ -73,6 +82,7 @@ const UserSchema = new Schema(
       transform: (_doc, ret) => {
         delete ret.password;       // ไม่ส่ง password ออก
         delete ret.resetTokenHash; // ไม่ส่ง reset token ออก
+        delete ret.emailVerifyTokenHash;
         return ret;
       },
     },

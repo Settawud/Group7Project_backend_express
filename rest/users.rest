@@ -25,8 +25,8 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "firstname": "Ada",
-  "lastname": "Updated",
+  "firstName": "Ada",
+  "lastName": "Updated",
   "phone": "0123456789"
 }
 
@@ -51,3 +51,23 @@ Content-Type: image/jpeg
 
 < ./chair.jpg
 --WebAppBoundary--
+
+### Me: update addresses (example)
+PATCH {{base}}/api/v1/mongo/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "addresses": [
+    {
+      "addressId": "REPLACE_ADDRESS_ID",
+      "buildingNo": "99/1",
+      "detail": "หมู่บ้านตัวอย่าง ซอย 5",
+      "zipCode": "10200",
+      "subdistrict": "REPLACE_SUBDISTRICT_ID",
+      "district": "REPLACE_DISTRICT_ID",
+      "province": "REPLACE_PROVINCE_ID",
+      "is_default": true
+    }
+  ]
+}
