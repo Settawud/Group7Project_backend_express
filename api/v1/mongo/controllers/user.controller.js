@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 //POST /api/auth/register
 export const register = async (req, res, next) => {
     try {
-        const { firstname, lastname, email, phone, password, image } = req.body || {};
+        const { firstName, lastName, email, phone, password, image } = req.body || {};
         const exists = await User.findOne({ email });
         if (exists) return res.status(409).json({ error: true, message: "Email already used "});
 
@@ -23,7 +23,7 @@ export const register = async (req, res, next) => {
             finalRole = "admin";
         }
 
-        const user = await User.create({ firstname, lastname, email, phone, password, image, role: finalRole });
+        const user = await User.create({ firstName, lastName, email, phone, password, image, role: finalRole });
         return res.status(201).json({ error: false, user }); //password ถูกตัดออกด้วย toJSON แล้ว
     } catch (err) {
         next(err);
@@ -46,7 +46,7 @@ export const login = async (req, res, next) => {
           {
             userId: user._id.toString(),
             email: user.email,
-            name: `${user.firstname || ""} ${user.lastname || ""}`.trim(),
+            name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
             role: user.role || "user",
             sv: user.sessionsVersion,
           },
@@ -88,10 +88,10 @@ export const me = async (req, res, next) => {
 // PATCH /api/users/me (แก้ไขโปรไฟล์ทั่วไป)
 export const updateMe = async (req, res, next) => {
     try {
-        const { firstname, lastname, phone, image, addresses } = req.body || {};
+        const { firstName, lastName, phone, image, addresses } = req.body || {};
         const user = await User.findByIdAndUpdate(
             req.user?.id,
-            { $set: { firstname, lastname, phone, image, addresses } },
+            { $set: { firstName, lastName, phone, image, addresses } },
             { new: true, runValidators: true }
             );
         return res.json({ error: false, user });

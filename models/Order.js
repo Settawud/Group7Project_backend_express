@@ -22,7 +22,7 @@ const orderSchema = new Schema({
     orderStatus: { type: String, enum: ['Pending', 'Shipped', 'Delivered'], required: true, default: 'Pending' },
     subtotalAmount: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, required: true, default: 0, min: 0 },
-    discountCode: { type: String, required: false, default: "" },
+    discountCode: { type: String},
     installationFee: { type: Number, required: true, default: 0, min: 0 },
     items: {
         type: [orderItemSchema],

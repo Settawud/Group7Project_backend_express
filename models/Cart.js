@@ -6,7 +6,7 @@ const cartItemSchema = new Schema(
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
     variantId: { type: Schema.Types.ObjectId, required: true },
     quantity: { type: Number, required: true, min: 1 },
-    trial: { type: Boolean, default: false },
+    trial: { type: Boolean, default: false }, //why
   },
   { _id: false }
 );

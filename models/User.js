@@ -8,13 +8,14 @@ const { ObjectId } = mongoose.Schema.Types;
 // _id: false = ไม่ต้องสร้าง id แยกให้กับทุก address
 const AddressSchema = new Schema(
   {
-    address_id: { type: ObjectId, required: true }, // id อ้างอิงของ address
-    building_no: { type: String, trim: true },      // บ้านเลขที่/อาคาร
+    addressId: { type: ObjectId, required: true }, // id อ้างอิงของ address
+    buildingNo: { type: String, trim: true, required: true },      // บ้านเลขที่/อาคาร
     detail: { type: String, trim: true },           // รายละเอียดที่อยู่
     subdistrict: { type: ObjectId, ref: "Subdistrict", required: true },
     district: { type: ObjectId, ref: "District", required: true },
     province: { type: ObjectId, ref: "Province", required: true },
-    is_default: { type: Boolean, default: false },  // true = ใช้เป็นที่อยู่หลัก
+    postcode: { type: ObjectId, ref: "Subdistrict", required: true },
+    isDefault: { type: Boolean, default: false },  // true = ใช้เป็นที่อยู่หลัก
   },
   { _id: false }
 );
@@ -23,8 +24,8 @@ const AddressSchema = new Schema(
 // โครงสร้างข้อมูล "ผู้ใช้"
 const UserSchema = new Schema(
   {
-    firstname: { type: String, required: true, trim: true }, // ชื่อจริง
-    lastname: { type: String, required: true, trim: true },  // นามสกุล
+    firstName: { type: String, required: true, trim: true }, // ชื่อจริง
+    lastName: { type: String, required: true, trim: true },  // นามสกุล
 
     // อีเมล: ห้ามซ้ำ, ต้องตรงรูปแบบอีเมล, แปลงเป็นตัวเล็กอัตโนมัติ
     email: {
