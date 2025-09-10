@@ -23,7 +23,8 @@ const AddressSchema = new Schema(
     subdistrict: { type: ObjectId, ref: "Subdistrict", required: true },
     district: { type: ObjectId, ref: "District", required: true },
     province: { type: ObjectId, ref: "Province", required: true },
-    is_default: { type: Boolean, default: false },  // true = ใช้เป็นที่อยู่หลัก
+    postcode: { type: ObjectId, ref: "Subdistrict", required: true },
+    isDefault: { type: Boolean, default: false },  // true = ใช้เป็นที่อยู่หลัก
   },
   { _id: false }
 );
@@ -32,6 +33,8 @@ const AddressSchema = new Schema(
 // โครงสร้างข้อมูล "ผู้ใช้"
 const UserSchema = new Schema(
   {
+    firstName: { type: String, required: true, trim: true }, // ชื่อจริง
+    lastName: { type: String, required: true, trim: true },  // นามสกุล
     firstName: { type: String, required: true, trim: true }, // ชื่อจริง
     lastName: { type: String, required: true, trim: true },  // นามสกุล
 
