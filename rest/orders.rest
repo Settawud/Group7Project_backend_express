@@ -1,0 +1,33 @@
+@base = http://localhost:4000
+@ts = {{$timestamp}}
+
+### Login user
+# @name login
+POST {{base}}/api/v1/mongo/auth/login
+Content-Type: application/json
+
+{
+  "email": "ada.{{ts}}@example.com",
+  "password": "secret123"
+}
+
+###
+@token = {{login.response.body.token}}
+
+### Orders: list
+GET {{base}}/api/v1/mongo/orders
+Authorization: Bearer {{token}}
+
+### Orders: create from cart (optional discountCode)
+POST {{base}}/api/v1/mongo/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "discountCode": "",
+  "shipping": { "address": "123 Test Rd" }
+}
+
+### Orders: list again
+GET {{base}}/api/v1/mongo/orders
+Authorization: Bearer {{token}}

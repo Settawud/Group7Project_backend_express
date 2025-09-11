@@ -9,8 +9,17 @@ const { ObjectId } = mongoose.Schema.Types;
 const AddressSchema = new Schema(
   {
     addressId: { type: ObjectId, required: true }, // id อ้างอิงของ address
-    buildingNo: { type: String, trim: true, required: true },      // บ้านเลขที่/อาคาร
-    detail: { type: String, trim: true },           // รายละเอียดที่อยู่
+    buildingNo: { type: String, trim: true },      // บ้านเลขที่/อาคาร
+    detail: { type: String, trim: true },          // รายละเอียดที่อยู่
+    postcode: {
+      type: String,
+      trim: true,
+      validate: {
+        // Thai postal code: 5 digits
+        validator: (v) => !v || /^\d{5}$/.test(v),
+        message: "Invalid Thai postal code (5 digits)",
+      },
+    },
     subdistrict: { type: ObjectId, ref: "Subdistrict", required: true },
     district: { type: ObjectId, ref: "District", required: true },
     province: { type: ObjectId, ref: "Province", required: true },
@@ -24,6 +33,8 @@ const AddressSchema = new Schema(
 // โครงสร้างข้อมูล "ผู้ใช้"
 const UserSchema = new Schema(
   {
+    firstName: { type: String, required: true, trim: true }, // ชื่อจริง
+    lastName: { type: String, required: true, trim: true },  // นามสกุล
     firstName: { type: String, required: true, trim: true }, // ชื่อจริง
     lastName: { type: String, required: true, trim: true },  // นามสกุล
 
@@ -56,6 +67,9 @@ const UserSchema = new Schema(
     password: { type: String, required: true, minlength: 6, select: false },
 
     image: { type: String, trim: true },   // รูปโปรไฟล์
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyTokenHash: { type: String, default: null },
+    emailVerifyTokenExpires: { type: Date, default: null },
     role: { type: String, enum: ["admin", "user"], default: "user" },
     resetTokenHash: { type: String, default: null },  // เก็บ hash ของ token รีเซ็ตรหัสผ่าน
     resetTokenExpires: { type: Date, default: null }, // วันหมดอายุของ token
@@ -71,6 +85,7 @@ const UserSchema = new Schema(
       transform: (_doc, ret) => {
         delete ret.password;       // ไม่ส่ง password ออก
         delete ret.resetTokenHash; // ไม่ส่ง reset token ออก
+        delete ret.emailVerifyTokenHash;
         return ret;
       },
     },
