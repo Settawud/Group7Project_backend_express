@@ -24,7 +24,7 @@ const AddressSchema = new Schema(
     district: { type: ObjectId, ref: "District", required: true },
     province: { type: ObjectId, ref: "Province", required: true },
     isDefault: { type: Boolean, default: false },  // true = ใช้เป็นที่อยู่หลัก
-  },
+  }, 
   { _id: false }
 );
 
