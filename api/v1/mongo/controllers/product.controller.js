@@ -3,17 +3,16 @@ import cloudinary from "../../../../config/cloudinary.js";
 
 // Helpers
 const normalizeImages = (arr) => (Array.isArray(arr) ? arr : []);
-const toImageObject = (it) => (typeof it === "string" ? { url: it, publicId: it } : it);
-const uniqByPublicId = (arr) => Array.from(new Map(arr.map((it) => [it.publicId, it])).values());
-const pickUploaded = (files) =>
-  (Array.isArray(files) ? files : [])
-    .map((f) => ({
-      url: f?.path || f?.secure_url || "",
-      publicId: f?.filename || f?.public_id || "",
-      mimetype: f?.mimetype || "",
-      size: typeof f?.size === "number" ? f.size : undefined,
-    }))
-    .filter((x) => x.url && x.publicId);
+const toImageObject = (it) => (typeof it === "string" ? { url: it, publicId: it } : { url: it?.url, publicId: it?.publicId });
+const uniqByPublicId = (arr) => Array.from(new Map(arr.map((it) => [it.publicId, { url: it.url, publicId: it.publicId }])).values());
+const pickOneUploaded = (fileOrFiles) => {
+  const f = Array.isArray(fileOrFiles) ? fileOrFiles[0] : fileOrFiles;
+  if (!f) return null;
+  const url = f?.path || f?.secure_url || "";
+  const publicId = f?.filename || f?.public_id || "";
+  if (!url || !publicId) return null;
+  return { url, publicId };
+};
 
 // Products
 export async function listProducts(req, res, next) {
@@ -93,26 +92,26 @@ export async function uploadProductImages(req, res, next) {
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
 
     const variantId = String(req.body?.variantId || "");
-    const uploaded = pickUploaded(req.files);
+    const uploaded = pickOneUploaded(req.file || (Array.isArray(req.files) ? req.files[0] : null));
 
-    if (!uploaded.length) {
+    if (!uploaded) {
       return res.status(400).json({ error: true, message: "No images uploaded" });
     }
 
     if (variantId) {
       const v = product.variants.id(variantId);
       if (!v) return res.status(404).json({ error: true, message: "Variant not found" });
-      const existing = normalizeImages(v.images).map(toImageObject);
-      v.images = uniqByPublicId([...existing, ...uploaded]);
+      const existing = normalizeImages(v.images).map(toImageObject).filter((x) => x.url && x.publicId);
+      v.images = uniqByPublicId([...existing, uploaded]);
     } else {
-      const existing = normalizeImages(product.Thumbnails).map(toImageObject);
-      product.Thumbnails = uniqByPublicId([...existing, ...uploaded]);
+      const existing = normalizeImages(product.thumbnails).map(toImageObject).filter((x) => x.url && x.publicId);
+      product.thumbnails = uniqByPublicId([...existing, uploaded]);
     }
 
     await product.save();
     return res.status(201).json({
       success: true,
-      images: uploaded.map((u) => ({ url: u.url, publicId: u.publicId })),
+      images: [uploaded],
       product,
     });
   } catch (err) {
@@ -150,7 +149,9 @@ export async function createVariant(req, res, next) {
     }
     const product = await Product.findById(req.params.productId);
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
-    product.variants.push({ colorId, price: Number(price), quantityInStock: Number(quantityInStock), trial: !!trial, images });
+    const normalized = normalizeImages(images).map(toImageObject).filter((x) => x.url && x.publicId);
+    const one = normalized.length ? [normalized[0]] : [];
+    product.variants.push({ colorId, price: Number(price), quantityInStock: Number(quantityInStock), trial: !!trial, images: one });
     await product.save();
     const created = product.variants[product.variants.length - 1];
     res.status(201).json({ success: true, item: created, productId: product._id });
@@ -168,7 +169,17 @@ export async function updateVariant(req, res, next) {
     if (payload.price !== undefined) variant.price = Number(payload.price);
     if (payload.quantityInStock !== undefined) variant.quantityInStock = Number(payload.quantityInStock);
     if (payload.trial !== undefined) variant.trial = !!payload.trial;
-    if (Array.isArray(payload.images)) variant.images = payload.images;
+    if (payload.images !== undefined) {
+      if (Array.isArray(payload.images)) {
+        const normalized = normalizeImages(payload.images).map(toImageObject).filter((x) => x.url && x.publicId);
+        variant.images = normalized.length ? [normalized[0]] : [];
+      } else if (payload.images === null) {
+        variant.images = [];
+      } else {
+        const obj = toImageObject(payload.images);
+        variant.images = obj && obj.url && obj.publicId ? [obj] : [];
+      }
+    }
     await product.save();
     res.json({ success: true, item: variant });
   } catch (err) { next(err); }
@@ -193,17 +204,17 @@ export async function uploadVariantImages(req, res, next) {
     const variant = product.variants.id(req.params.variantId);
     if (!variant) return res.status(404).json({ error: true, message: "Variant not found" });
 
-    const uploaded = pickUploaded(req.files);
-    if (!uploaded.length) {
+    const uploaded = pickOneUploaded(req.file || (Array.isArray(req.files) ? req.files[0] : null));
+    if (!uploaded) {
       return res.status(400).json({ error: true, message: "No images uploaded" });
     }
 
-    const existing = normalizeImages(variant.images).map(toImageObject);
-    variant.images = uniqByPublicId([...existing, ...uploaded]);
+    // Keep only a single image for a variant (replace if exists)
+    variant.images = [uploaded];
     await product.save();
     return res.status(201).json({
       success: true,
-      images: uploaded.map((u) => ({ url: u.url, publicId: u.publicId })),
+      images: [uploaded],
       productId: product._id,
       variantId: variant._id,
     });
@@ -225,7 +236,7 @@ export async function deleteProductImage(req, res, next) {
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
 
-    const existing = normalizeImages(product.Thumbnails).map(toImageObject);
+    const existing = normalizeImages(product.thumbnails).map(toImageObject);
     const before = existing.length;
     const keep = existing.filter((img) => img.publicId !== publicId);
     if (keep.length === before) {
@@ -235,7 +246,7 @@ export async function deleteProductImage(req, res, next) {
     // Try to delete from Cloudinary; ignore errors to allow metadata cleanup
     try { await cloudinary.uploader.destroy(publicId, { resource_type: "image" }); } catch {}
 
-    product.Thumbnails = keep;
+    product.thumbnails = keep;
     await product.save();
     return res.json({ success: true });
   } catch (err) { next(err); }

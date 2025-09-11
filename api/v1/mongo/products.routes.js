@@ -62,7 +62,7 @@ const storage = new CloudinaryStorage({
 // ก่อนประกาศ upload = multer(...)
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024, files: 10 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const mimeOk = /image\/(jpe?g|png|webp)/i.test(file.mimetype || "");
     const extOk  = /\.(jpe?g|png|webp)$/i.test(file.originalname || "");
@@ -90,7 +90,7 @@ router.post(
   jwtBearer,
   requireRole("admin"),
   requireCloudinaryConfigured,
-  upload.array("images", 10),
+  upload.single("image"),
   uploadProductImages
 );
 
@@ -133,7 +133,7 @@ router.post(
   jwtBearer,
   requireRole("admin"),
   requireCloudinaryConfigured,
-  upload.array("images", 10),
+  upload.single("image"),
   uploadVariantImages
 );
 

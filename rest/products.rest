@@ -42,7 +42,7 @@ Content-Type: application/json
   "trial": false,
   "tags": ["office", "chair"],
   "material": "Mesh, Steel",
-  "Thumbnails": [],
+  "thumbnails": [],
   "dimension": { "width": 70, "height": 120, "depth": 60, "weight": 20 },
   "variants": [
     { "trial": false, "colorId": "{{colorId}}", "price": 9900, "quantityInStock": 10, "images": [] }
@@ -59,14 +59,14 @@ GET {{base}}/api/v1/mongo/products
 ### Products: get by id
 GET {{base}}/api/v1/mongo/products/{{productId}}
 
-### Products: upload images to product
+### Products: upload image to product (single file: field name "image")
 # @name upload_product_images
 POST {{base}}/api/v1/mongo/products/{{productId}}/images
 Authorization: Bearer {{adminToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="images"; filename="chair.jpg"
+Content-Disposition: form-data; name="image"; filename="chair.jpg"
 Content-Type: image/jpeg
 
 < ./chair.jpg
@@ -75,14 +75,14 @@ Content-Type: image/jpeg
 ###
 @productPublicId = {{upload_product_images.response.body.images[0].publicId}}
 
-### Products: upload images to variant
+### Products: upload image to variant (single file: field name "image")
 # @name upload_variant_images
 POST {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images
 Authorization: Bearer {{adminToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="images"; filename="chair.jpg"
+Content-Disposition: form-data; name="image"; filename="chair.jpg"
 Content-Type: image/jpeg
 
 < ./chair.jpg
