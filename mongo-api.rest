@@ -2,6 +2,8 @@
 @ts = {{$timestamp}}
 @email = ada.{{ts}}@example.com
 
+@ADMIN_SIGNUP_SECRET = a0f05e5f316daf995aff631d4dadb866f24ae230cd72f1a69eef2e660f69efc406318783d9275d5d765e5fb9204d8d5a62ff73ebfce1a84f28f2b7122c125af0
+
 ### Health: DB
 GET {{base}}/health/db
 
@@ -36,9 +38,9 @@ POST {{base}}/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
-  "firstname": "Admin",
-  "lastname": "User",
-  "email": "admin3@example.com",
+  "firstName": "Admin",
+  "lastName": "User",
+  "email": "admin5@example.com",
   "phone": "0900000000",
   "password": "Admin#123",
   "role": "admin",
@@ -51,7 +53,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin@example.com",
+  "email": "admin5@example.com",
   "password": "Admin#123"
 }
 
@@ -152,6 +154,13 @@ Content-Type: application/json
       "colorId": "{{colorId}}",
       "price": 13900,
       "quantityInStock": 5,
+      "images": []
+    },
+        {
+      "trial": true,
+      "colorId": "{{colorId}}",
+      "price": 1400,
+      "quantityInStock": 2,
       "images": []
     }
   ]
