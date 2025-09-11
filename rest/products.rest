@@ -45,7 +45,7 @@ Content-Type: application/json
   "thumbnails": [],
   "dimension": { "width": 70, "height": 120, "depth": 60, "weight": 20 },
   "variants": [
-    { "trial": false, "colorId": "{{colorId}}", "price": 9900, "quantityInStock": 10, "images": [] }
+    { "trial": false, "colorId": "{{colorId}}", "price": 9900, "quantityInStock": 10, "image": null }
   ]
 }
 
@@ -94,7 +94,67 @@ Content-Type: image/jpeg
 ### Variants: list
 GET {{base}}/api/v1/mongo/products/{{productId}}/variants
 
-### Variants: patch
+### Variants: get one
+GET {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+
+### Variants: upload image again with POST (should 409 Conflict)
+# @name upload_variant_images_conflict
+POST {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="image"; filename="C7-Ergonomic-Chair-1.png"
+Content-Type: image/png
+
+< ./C7-Ergonomic-Chair-1.png
+--WebAppBoundary--
+
+### Variants: PUT to replace existing image
+# @name replace_variant_image_put
+PUT {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images
+Authorization: Bearer {{adminToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="image"; filename="C7-Ergonomic-Chair-1.png"
+Content-Type: image/png
+
+< ./C7-Ergonomic-Chair-1.png
+--WebAppBoundary--
+
+###
+@variantPublicId2 = {{replace_variant_image_put.response.body.images[0].publicId}}
+@variantUrl2 = {{replace_variant_image_put.response.body.images[0].url}}
+
+### Variants: get one (after replace)
+GET {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+
+### Variants: patch to clear image
+PATCH {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "image": null
+}
+
+### Variants: get one (after clear)
+GET {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+
+### Variants: patch to set image via JSON
+PATCH {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "image": { "url": "{{variantUrl2}}", "publicId": "{{variantPublicId2}}" }
+}
+
+### Variants: get one (after set via JSON)
+GET {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
+
+### Variants: patch other fields
 PATCH {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
@@ -111,7 +171,7 @@ Authorization: Bearer {{adminToken}}
 
 
 ### Variant images: delete one (query param)
-DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId}}
+DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId2}}
 Authorization: Bearer {{adminToken}}
 
 ### Products: delete (admin)

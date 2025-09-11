@@ -18,6 +18,7 @@ import {
   updateVariant,
   deleteVariant,
   uploadVariantImages,
+  replaceVariantImage,
   deleteVariantImage,
 } from "./controllers/product.controller.js";
 
@@ -127,7 +128,7 @@ router.patch("/:productId/variants/:variantId", jwtBearer, requireRole("admin"),
 router.delete("/:productId/variants/:variantId", jwtBearer, requireRole("admin"), deleteVariant);
 
 // POST /api/v1/mongo/products/:productId/variants/:variantId/images (admin)
-// Alias of the product images endpoint but targets a specific variant via URL params.
+// Upload a new variant image (will 409 if already exists)
 router.post(
   "/:productId/variants/:variantId/images",
   jwtBearer,
@@ -135,6 +136,17 @@ router.post(
   requireCloudinaryConfigured,
   upload.single("image"),
   uploadVariantImages
+);
+
+// PUT /api/v1/mongo/products/:productId/variants/:variantId/images (admin)
+// Replace existing variant image with the uploaded one
+router.put(
+  "/:productId/variants/:variantId/images",
+  jwtBearer,
+  requireRole("admin"),
+  requireCloudinaryConfigured,
+  upload.single("image"),
+  replaceVariantImage
 );
 
 // DELETE variant image by publicId

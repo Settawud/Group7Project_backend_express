@@ -8,8 +8,14 @@ export const variantSchema = new Schema(
     colorId: { type: Schema.Types.ObjectId, ref: "Color", required: true },
     price: { type: Number, required: true },
     quantityInStock: { type: Number, required: true },
-    // Allow legacy entries but we will only store { url, publicId }
-    images: { type: [Schema.Types.Mixed], default: [] },
+    // Single image per variant: { url, publicId }
+    image: new Schema(
+      {
+        url: { type: String, trim: true },
+        publicId: { type: String, trim: true },
+      },
+      { _id: false }
+    ),
   },
   { timestamps: true }
 );

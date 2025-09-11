@@ -91,22 +91,19 @@ export async function uploadProductImages(req, res, next) {
     const product = await Product.findById(req.params.productId);
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
 
-    const variantId = String(req.body?.variantId || "");
     const uploaded = pickOneUploaded(req.file || (Array.isArray(req.files) ? req.files[0] : null));
 
     if (!uploaded) {
       return res.status(400).json({ error: true, message: "No images uploaded" });
     }
 
-    if (variantId) {
-      const v = product.variants.id(variantId);
-      if (!v) return res.status(404).json({ error: true, message: "Variant not found" });
-      const existing = normalizeImages(v.images).map(toImageObject).filter((x) => x.url && x.publicId);
-      v.images = uniqByPublicId([...existing, uploaded]);
-    } else {
-      const existing = normalizeImages(product.thumbnails).map(toImageObject).filter((x) => x.url && x.publicId);
-      product.thumbnails = uniqByPublicId([...existing, uploaded]);
+    // Explicitly disallow using this endpoint for variant upload
+    if (req.body && req.body.variantId) {
+      return res.status(400).json({ error: true, message: "Use /products/:productId/variants/:variantId/images for variant uploads" });
     }
+
+    const existing = normalizeImages(product.thumbnails).map(toImageObject).filter((x) => x.url && x.publicId);
+    product.thumbnails = uniqByPublicId([...existing, uploaded]);
 
     await product.save();
     return res.status(201).json({
@@ -143,15 +140,15 @@ export async function getVariant(req, res, next) {
 
 export async function createVariant(req, res, next) {
   try {
-    const { colorId, price, quantityInStock, trial = false, images = [] } = req.body || {};
+    const { colorId, price, quantityInStock, trial = false, image = null } = req.body || {};
     if (!colorId || !Number.isFinite(Number(price)) || !Number.isFinite(Number(quantityInStock))) {
       return res.status(400).json({ error: true, message: "colorId, price, quantityInStock required" });
     }
     const product = await Product.findById(req.params.productId);
     if (!product) return res.status(404).json({ error: true, message: "Product not found" });
-    const normalized = normalizeImages(images).map(toImageObject).filter((x) => x.url && x.publicId);
-    const one = normalized.length ? [normalized[0]] : [];
-    product.variants.push({ colorId, price: Number(price), quantityInStock: Number(quantityInStock), trial: !!trial, images: one });
+    const img = image ? toImageObject(image) : null;
+    const one = img && img.url && img.publicId ? img : undefined;
+    product.variants.push({ colorId, price: Number(price), quantityInStock: Number(quantityInStock), trial: !!trial, ...(one ? { image: one } : {}) });
     await product.save();
     const created = product.variants[product.variants.length - 1];
     res.status(201).json({ success: true, item: created, productId: product._id });
@@ -169,15 +166,12 @@ export async function updateVariant(req, res, next) {
     if (payload.price !== undefined) variant.price = Number(payload.price);
     if (payload.quantityInStock !== undefined) variant.quantityInStock = Number(payload.quantityInStock);
     if (payload.trial !== undefined) variant.trial = !!payload.trial;
-    if (payload.images !== undefined) {
-      if (Array.isArray(payload.images)) {
-        const normalized = normalizeImages(payload.images).map(toImageObject).filter((x) => x.url && x.publicId);
-        variant.images = normalized.length ? [normalized[0]] : [];
-      } else if (payload.images === null) {
-        variant.images = [];
+    if (payload.image !== undefined) {
+      if (payload.image === null) {
+        variant.image = undefined;
       } else {
-        const obj = toImageObject(payload.images);
-        variant.images = obj && obj.url && obj.publicId ? [obj] : [];
+        const obj = toImageObject(payload.image);
+        variant.image = obj && obj.url && obj.publicId ? obj : undefined;
       }
     }
     await product.save();
@@ -209,10 +203,42 @@ export async function uploadVariantImages(req, res, next) {
       return res.status(400).json({ error: true, message: "No images uploaded" });
     }
 
-    // Keep only a single image for a variant (replace if exists)
-    variant.images = [uploaded];
+    // POST should not overwrite: conflict if image already exists
+    if (variant.image && variant.image.url && variant.image.publicId) {
+      return res.status(409).json({ error: true, message: "Variant already has an image. Use PUT to replace it." });
+    }
+    variant.image = uploaded;
     await product.save();
     return res.status(201).json({
+      success: true,
+      images: [uploaded],
+      productId: product._id,
+      variantId: variant._id,
+    });
+  } catch (err) {
+    if (err?.message === "Invalid file type") {
+      return res.status(400).json({ error: true, message: "Only JPG/PNG/WebP images are allowed" });
+    }
+    next(err);
+  }
+}
+
+// PUT replace variant image (always set to uploaded image)
+export async function replaceVariantImage(req, res, next) {
+  try {
+    const product = await Product.findById(req.params.productId);
+    if (!product) return res.status(404).json({ error: true, message: "Product not found" });
+    const variant = product.variants.id(req.params.variantId);
+    if (!variant) return res.status(404).json({ error: true, message: "Variant not found" });
+
+    const uploaded = pickOneUploaded(req.file || (Array.isArray(req.files) ? req.files[0] : null));
+    if (!uploaded) {
+      return res.status(400).json({ error: true, message: "No images uploaded" });
+    }
+
+    variant.image = uploaded;
+    await product.save();
+    return res.status(200).json({
       success: true,
       images: [uploaded],
       productId: product._id,
@@ -264,16 +290,14 @@ export async function deleteVariantImage(req, res, next) {
     const variant = product.variants.id(variantId);
     if (!variant) return res.status(404).json({ error: true, message: "Variant not found" });
 
-    const existing = normalizeImages(variant.images).map(toImageObject);
-    const before = existing.length;
-    const keep = existing.filter((img) => img.publicId !== publicId);
-    if (keep.length === before) {
+    const existing = variant.image && variant.image.publicId ? [variant.image] : [];
+    if (!existing.length || existing[0].publicId !== publicId) {
       return res.status(404).json({ error: true, message: "Image not found" });
     }
 
     try { await cloudinary.uploader.destroy(publicId, { resource_type: "image" }); } catch {}
 
-    variant.images = keep;
+    variant.image = undefined;
     await product.save();
     return res.json({ success: true });
   } catch (err) { next(err); }

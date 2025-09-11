@@ -91,7 +91,7 @@ const buildOrderFromCart = async (userId) => {
         price: v.price,
         trial: !!v.trial,
         variantOption: colorName,
-        image: pickFirstImageUrl(v.images) || pickFirstImageUrl(p.images) || pickFirstImageUrl(p.thumbnails) || "",
+        image: (v.image?.url || "") || pickFirstImageUrl(p.images) || pickFirstImageUrl(p.thumbnails) || "",
       },
     });
   }
