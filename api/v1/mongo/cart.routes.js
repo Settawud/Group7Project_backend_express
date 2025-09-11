@@ -9,25 +9,19 @@ const router = express.Router();
 // All routes require auth
 router.use(jwtBearer);
 
-const getOrCreateCart = async (userId) => {
-  let cart = await Cart.findOne({ userId });
-  if (!cart) cart = await Cart.create({ userId, items: [] });
-  return cart;
-};
-
 // GET /api/v1/mongo/cart
+
 router.get("/", async (req, res, next) => {
   try {
-    const uid = new mongoose.Types.ObjectId(req.user.id);
-    const cart = await getOrCreateCart(uid);
-    res.json({ success: true, cart });
+    const cart = await Cart.findOne({ userId: req.user.id });
+    res.status(200).json({ success: true, cart });
   } catch (err) { next(err); }
 });
 
 // POST /api/v1/mongo/cart/items { productId, variantId, quantity }
 router.post("/items", async (req, res, next) => {
   try {
-    const { productId, variantId, quantity } = req.body || {};
+    const { productId, variantId, quantity } = req.body
     const qty = Number(quantity);
     if (!productId || !variantId || !qty) {
       return res.status(400).json({ error: true, message: "productId, variantId, quantity required" });
