@@ -39,6 +39,24 @@ function requireCloudinaryConfigured(_req, res, next) {
   next();
 }
 
+// ฟังก์ชันช่วย extract publicId ของไฟล์จาก Cloudinary URL
+function extractCloudinaryPublicId(u = "") {
+  try {
+    if (!u) return "";
+    const withoutProtocol = String(u).replace(/^https?:\/\//i, "");
+    if (!/res\.cloudinary\.com|cloudinary/.test(withoutProtocol)) return "";
+    const idx = withoutProtocol.indexOf("/upload/");
+    if (idx === -1) return "";
+    let rest = withoutProtocol.slice(idx + 8);
+    rest = rest.split("?")[0];             // ตัด query string
+    rest = rest.replace(/\/v\d+\//, "/");  // ลบเวอร์ชัน v12345
+    rest = rest.replace(/\.[a-zA-Z0-9]+$/, ""); // ลบนามสกุลไฟล์
+    return rest.trim();
+  } catch {
+    return "";
+  }
+}
+
 // กำหนด storage ของ multer ให้ใช้ Cloudinary โดยตรง
 const storage = new CloudinaryStorage({
   cloudinary,
@@ -63,24 +81,32 @@ const upload = multer({
   },
 });
 
-// --------- PATCH /me/image (อัปโหลด/เปลี่ยนรูปโปรไฟล์) ----------
-router.patch(
-  "/me/image",
+// --------- PUT /me/image (อัปโหลด/เปลี่ยนรูปโปรไฟล์ แทนทรัพยากรเดิม) ----------
+router.put("/me/image",
   requireCloudinaryConfigured,   // เช็คว่ามี config cloudinary ก่อน
   upload.single("image"),        // ใช้ multer รับไฟล์เดียวจากฟิลด์ชื่อ image
   async (req, res, next) => {
     try {
       const f = req.file || {};
-      const url = f.path || f.secure_url || "";    // เอา URL ไฟล์ที่อัพโหลด
-      if (!url) return res.status(400).json({ error: true, message: "No image uploaded" });
+      const newUrl = f.path || f.secure_url || "";    // URL ไฟล์ใหม่ที่อัปโหลดแล้ว
+      if (!newUrl) return res.status(400).json({ error: true, message: "No image uploaded" });
 
-      // update image field ของ user
-      const user = await User.findByIdAndUpdate(
-        req.user?.id,
-        { $set: { image: url } },
-        { new: true, runValidators: true }
-      );
-      if (!user) return res.status(404).json({ error: true, message: "User not found" });
+      // โหลดผู้ใช้เพื่อได้ URL รูปเดิม
+      const user = await User.findById(req.user?.id);
+      if (!user) {
+        // rollback: ลบไฟล์ใหม่ออกจาก Cloudinary ถ้าผู้ใช้ไม่พบ
+        const newPublicId = extractCloudinaryPublicId(newUrl);
+        if (newPublicId) { try { await cloudinary.uploader.destroy(newPublicId, { resource_type: "image" }); } catch {} }
+        return res.status(404).json({ error: true, message: "User not found" });
+      }
+
+      // ลบรูปเก่าบน Cloudinary (best-effort)
+      const oldPublicId = extractCloudinaryPublicId(user.image || "");
+      if (oldPublicId) { try { await cloudinary.uploader.destroy(oldPublicId, { resource_type: "image" }); } catch {} }
+
+      // อัปเดตรูปใหม่ใน DB
+      user.image = newUrl;
+      await user.save();
       return res.json({ success: true, user });
     } catch (err) {
       if (err?.message === "Invalid file type") {
@@ -101,25 +127,7 @@ router.delete("/me/image", async (req, res, next) => {
     user.image = "";             // clear ค่า image ใน DB
     await user.save();
 
-    // ฟังก์ชันช่วย extract publicId ของไฟล์จาก Cloudinary URL
-    const tryExtractPublicId = (u) => {
-      try {
-        if (!u) return "";
-        const withoutProtocol = u.replace(/^https?:\/\//i, "");
-        if (!/res\.cloudinary\.com|cloudinary/.test(withoutProtocol)) return "";
-        const idx = withoutProtocol.indexOf("/upload/");
-        if (idx === -1) return "";
-        let rest = withoutProtocol.slice(idx + 8);
-        rest = rest.split("?")[0];             // ตัด query string
-        rest = rest.replace(/\/v\d+\//, "/");  // ลบเวอร์ชัน v12345
-        rest = rest.replace(/\.[a-zA-Z0-9]+$/, ""); // ลบนามสกุลไฟล์
-        return rest.trim();
-      } catch {
-        return "";
-      }
-    };
-
-    const publicId = tryExtractPublicId(url);
+    const publicId = extractCloudinaryPublicId(url);
     if (publicId) {
       try { 
         await cloudinary.uploader.destroy(publicId, { resource_type: "image" }); 
