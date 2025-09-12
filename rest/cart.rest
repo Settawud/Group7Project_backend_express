@@ -15,8 +15,8 @@ Content-Type: application/json
 @token = {{login.response.body.token}}
 
 ### Set the product/variant you want to add
-@productId = REPLACE_PRODUCT_ID
-@variantId = REPLACE_VARIANT_ID
+@productId = 68c39606f0b03d45526fd1cb
+@variantId = 68c39606f0b03d45526fd1cd
 
 ### Cart: get
 GET {{base}}/api/v1/mongo/cart
@@ -30,7 +30,7 @@ Content-Type: application/json
 {
   "productId": "{{productId}}",
   "variantId": "{{variantId}}",
-  "quantity": 1
+  "quantity": 2
 }
 
 ### Cart: update item quantity

@@ -16,27 +16,73 @@ const pickOneUploaded = (fileOrFiles) => {
 
 // Products
 export async function listProducts(req, res, next) {
-  try {
-    const { q, category } = req.query || {};
+   try {
+    const {
+      search = "",
+      category,
+      minPrice,
+      maxPrice,
+      sort,
+      page = 1,
+    } = req.query;
+
     const filter = {};
-    if (category) filter.category = category;
-    const term = (q || "").trim();
-    const query = term
-      ? {
-          $and: [
-            filter,
-            {
-              $or: [
-                { name: { $regex: term, $options: "i" } },
-                { description: { $regex: term, $options: "i" } },
-                { tags: { $in: [new RegExp(term, "i")] } },
-              ],
-            },
-          ],
-        }
-      : filter;
-    const items = await Product.find(query).lean();
-    res.json({ success: true, count: items.length, items });
+
+    if (category) {
+      filter.category = category;
+    }
+
+    const min = parseFloat(minPrice);
+    const max = parseFloat(maxPrice);
+
+    if (!isNaN(min) || !isNaN(max)) {
+      filter.variants = {
+        $elemMatch: {}
+      };
+      if (!isNaN(min)) filter.variants.$elemMatch.price = { $gte: min };
+      if (!isNaN(max)) {
+        if (!filter.variants.$elemMatch.price) filter.variants.$elemMatch.price = {};
+        filter.variants.$elemMatch.price.$lte = max;
+      }
+    }
+
+    const term = search.trim();
+    let query = {};
+    if (term) {
+      query = {
+        $or: [
+          { name: { $regex: term, $options: "i" } },
+          { description: { $regex: term, $options: "i" } },
+          { tags: { $in: [new RegExp(term, "i")] } },
+        ],
+      };
+    }
+
+    const finalQuery = term ? { $and: [filter, query] } : filter;
+
+    let sortOption = {};
+    if (sort) {
+      const [field, direction] = sort.split(":");
+      if (field) {
+        sortOption[field] = direction === "desc" ? -1 : 1;
+      }
+    }
+
+    const limit = 20;
+    const skip = (parseInt(page) - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      Product.find(finalQuery).sort(sortOption).skip(skip).limit(limit).lean(),
+      Product.countDocuments(finalQuery),
+    ]);
+
+    res.json({
+      success: true,
+      count: items.length,
+      total,
+      page: parseInt(page),
+      items,
+    });
   } catch (err) {
     next(err);
   }
