@@ -173,7 +173,8 @@ Authorization: Bearer {{adminToken}}
 ### Variant images: delete one (query param)
 DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId2}}
 Authorization: Bearer {{adminToken}}
-
+delete
 ### Products: delete (admin)
 DELETE {{base}}/api/v1/mongo/products/{{productId}}
 Authorization: Bearer {{adminToken}}
+

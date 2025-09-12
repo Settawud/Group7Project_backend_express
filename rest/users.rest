@@ -40,8 +40,8 @@ Content-Type: application/json
   "newPassword": "secret456"
 }
 
-### Me: upload profile image
-PATCH {{base}}/api/v1/mongo/users/me/image
+### Me: upload/replace profile image (PUT)
+PUT {{base}}/api/v1/mongo/users/me/image
 Authorization: Bearer {{token}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
@@ -63,7 +63,7 @@ Content-Type: application/json
       "addressId": "REPLACE_ADDRESS_ID",
       "buildingNo": "99/1",
       "detail": "หมู่บ้านตัวอย่าง ซอย 5",
-      "zipCode": "10200",
+      "postcode": "10200",
       "subdistrict": "REPLACE_SUBDISTRICT_ID",
       "district": "REPLACE_DISTRICT_ID",
       "province": "REPLACE_PROVINCE_ID",
@@ -71,3 +71,7 @@ Content-Type: application/json
     }
   ]
 }
+
+### Me: delete profile image
+DELETE {{base}}/api/v1/mongo/users/me/image
+Authorization: Bearer {{token}}
