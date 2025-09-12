@@ -156,11 +156,5 @@ router.delete(
   requireRole("admin"),
   deleteVariantImage
 );
-router.delete(
-  "/:productId/variants/:variantId/images",
-  jwtBearer,
-  requireRole("admin"),
-  deleteVariantImage
-);
 
 export default router;
