@@ -1,6 +1,16 @@
 import { Schema, model } from "mongoose";
 
 // Variant references Color by id (separate collection)
+
+
+export const imageSchema = new Schema(
+  {
+    url: { type: String, trim: true },
+    publicId: { type: String, trim: true },
+  },
+  { _id: false } // Only _id: false is needed here
+);
+
 export const variantSchema = new Schema(
   {
     _id: { type: Schema.Types.ObjectId, auto: true },
@@ -9,13 +19,7 @@ export const variantSchema = new Schema(
     price: { type: Number, required: true },
     quantityInStock: { type: Number, required: true },
     // Single image per variant: { url, publicId }
-    image: new Schema(
-      {
-        url: { type: String, trim: true },
-        publicId: { type: String, trim: true },
-      },
-      { _id: false }
-    ),
+    image: {type: imageSchema, default: null}
   },
   { timestamps: true }
 );
@@ -31,16 +35,7 @@ export const productSchema = new Schema(
     material: { type: String, required: true },
     // Store only objects with url/publicId
     thumbnails: {
-      type: [
-        new Schema(
-          {
-            url: { type: String, required: true, trim: true },
-            publicId: { type: String, required: true, trim: true },
-          },
-          { _id: false }
-        ),
-      ],
-      default: [],
+      type: [imageSchema],default: []
     },
     dimension: {
       width: { type: Number, required: true },
