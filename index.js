@@ -6,7 +6,6 @@ import apiRoutes from "./api/v1/routes.js";
 import limiter from "./middleware/rateLimiter.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
-import seedProducts from "./imagenull.js";
 
 
 dotenv.config();
@@ -97,7 +96,7 @@ const PORT = process.env.PORT || 4000;
     if (process.env.MONGO_URI) {
       const { connectMongo } = await import("./config/mongo.js");
       await connectMongo();
-      await seedProducts()
+
     } else {
       console.log("MONGO_URI not set — skipping Mongo connection");
     }
