@@ -36,14 +36,36 @@ Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
 {
-  "name": "Ergonomic Chair {{ts}}",
-  "description": "Comfortable and supportive chair",
-  "category": "furniture",
+  "name": "แผ่นรองเมาส์ Ergonomics รุ่น GelMousePad",
+  "description": "แผ่นรองเมาส์ที่มีเจลรองข้อมือในตัว ช่วยให้ข้อมืออยู่ในตำแหน่งที่เหมาะสม ลดอาการปวดเมื่อยจากการใช้เมาส์เป็นเวลานาน พื้นผิวเรียบลื่นรองรับการเคลื่อนไหวของเมาส์ได้อย่างแม่นยำ ฐานเป็นยางกันลื่นยึดติดกับโต๊ะได้ดี",
+  "category": "อุปกรณ์เสริม",
   "trial": false,
-  "tags": ["office", "chair"],
-  "material": "Mesh, Steel",
+  "tags": [
+    "แผ่นรองเมาส์",
+    "รองข้อมือ",
+    "เมาส์",],
+  "material": "ผ้า Lycra, เจล",
   "thumbnails": [],
-  "dimension": { "width": 70, "height": 120, "depth": 60, "weight": 20 },
+  "dimension": {
+  "width": 25,
+  "height": 2,
+  "depth": 20,
+  "weight": 0.3
+  },
+   "variants": [
+    {
+      "_id": {
+        "$oid": "68c3ab6df0436972ab8dcd98"
+      },
+      "trial": false,
+      "colorId": {
+        "$oid": "68c3920d4670b96d19e824ff"
+      },
+      "price": 299,
+      "quantityInStock": 18,
+      "image": null
+    }
+    
   "variants": [
     { "trial": false, "colorId": "68c3920d4670b96d19e824ff", "price": 9900, "quantityInStock": 10, "image": [] }
   ]

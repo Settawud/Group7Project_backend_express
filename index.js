@@ -8,7 +8,6 @@ import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 import seedProducts from "./imagenull.js";
 
-
 dotenv.config();
 
 const app = express();

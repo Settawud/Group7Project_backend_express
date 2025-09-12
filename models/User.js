@@ -1,6 +1,6 @@
 import mongoose, { Schema, model } from "mongoose";
 import bcrypt from "bcrypt";
-
+import { imageSchema } from "./Product.js";
 const { ObjectId } = mongoose.Schema.Types;
 
 // ---------------------------- Address Schema ---------------------------- //
@@ -64,13 +64,8 @@ const UserSchema = new Schema(
     password: { type: String, required: true, minlength: 6, select: false },
 
     // Single image per user: { url, publicId }
-    image: new Schema(
-      {
-        url: { type: String, trim: true },
-        publicId: { type: String, trim: true },
-      },
-      { _id: false }
-    ),  // รูปโปรไฟล์
+    image: {type: imageSchema, default: null},
+     // รูปโปรไฟล์
     emailVerified: { type: Boolean, default: false },
     emailVerifyTokenHash: { type: String, default: null },
     emailVerifyTokenExpires: { type: Date, default: null },
