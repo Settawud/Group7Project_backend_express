@@ -7,7 +7,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin3@example.com",
+  "email": "admin2@example.com",
   "password": "Admin#123"
 }
 
@@ -45,7 +45,7 @@ Content-Type: application/json
   "thumbnails": [],
   "dimension": { "width": 70, "height": 120, "depth": 60, "weight": 20 },
   "variants": [
-    { "trial": false, "colorId": "{{colorId}}", "price": 9900, "quantityInStock": 10, "image": null }
+    { "trial": false, "colorId": "68c3920d4670b96d19e824ff", "price": 9900, "quantityInStock": 10, "image": [] }
   ]
 }
 
