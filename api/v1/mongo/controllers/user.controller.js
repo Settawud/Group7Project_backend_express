@@ -1,8 +1,10 @@
 import { User } from "../../../../models/User.js";
+import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 //POST /api/auth/register
+
 export const register = async (req, res, next) => {
     try {
         const { firstName, lastName, email, phone, password, image } = req.body || {};
@@ -24,7 +26,9 @@ export const register = async (req, res, next) => {
             finalRole = "admin";
         }
 
-        const user = await User.create({ firstName, lastName, email, phone, password, image, role: finalRole });
+      const user = await User.create({ firstName, lastName, email, phone, password, image, role: finalRole });
+      await Cart.create({ userId: user._id, items: [] })
+
         return res.status(201).json({ error: false, user }); //password ถูกตัดออกด้วย toJSON แล้ว
     } catch (err) {
         next(err);

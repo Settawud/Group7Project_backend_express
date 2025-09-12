@@ -63,7 +63,7 @@ const UserSchema = new Schema(
     // select:false = เวลา query ปกติจะไม่ส่ง password กลับมา
     password: { type: String, required: true, minlength: 6, select: false },
 
-    image: { type: String, trim: true },   // รูปโปรไฟล์
+    image: { type: String, trim: true, default: ""},   // รูปโปรไฟล์
     emailVerified: { type: Boolean, default: false },
     emailVerifyTokenHash: { type: String, default: null },
     emailVerifyTokenExpires: { type: Date, default: null },

@@ -71,3 +71,7 @@ Content-Type: application/json
     }
   ]
 }
+
+### Me: delete profile image
+DELETE {{base}}/api/v1/mongo/users/me/image
+Authorization: Bearer {{token}}

@@ -20,7 +20,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "ada.1757532442@example.com",
+  "email": "ada.1757649351@example.com",
   "password": "secret123"
 }
 
@@ -48,7 +48,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin3@example.com",
+  "email": "admin2@example.com",
   "password": "Admin#123"
 }
 
