@@ -22,13 +22,14 @@ router.get("/:colorId", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/v1/mongo/colors (auth)
+//POST /api/v1/mongo/colors (auth)
 router.post("/", jwtBearer, requireRole("admin"), async (req, res, next) => {
   try {
     const created = await Color.create(req.body || {});
     res.status(201).json({ success: true, item: created });
   } catch (err) { next(err); }
 });
+
 
 // PATCH /api/v1/mongo/colors/:colorId (auth)
 router.patch("/:colorId", jwtBearer, requireRole("admin"), async (req, res, next) => {

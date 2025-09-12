@@ -4,9 +4,8 @@ import { Schema, model } from "mongoose";
 const cartItemSchema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
-    variantId: { type: Schema.Types.ObjectId, required: true },
-    quantity: { type: Number, required: true, min: 1 },
-    trial: { type: Boolean, default: false }, //why
+    variantId: { type: Schema.Types.ObjectId, ref: "Product.variants", required: true },
+    quantity: { type: Number, required: true, min: 1 }
   },
   { _id: false }
 );
