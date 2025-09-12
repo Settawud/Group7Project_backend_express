@@ -44,7 +44,7 @@ const upload = multer({
   },
 });
 
-// PATCH /api/v1/mongo/users/me/image
+/// PATCH /api/v1/mongo/users/me/image
 router.patch(
   "/me/image",
   requireCloudinaryConfigured,
@@ -77,3 +77,4 @@ router.patch("/me", updateMe);
 router.patch("/me/password", changePassword);
 
 export default router;
+
