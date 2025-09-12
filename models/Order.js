@@ -11,7 +11,7 @@ const orderItemSchema = new Schema({
         price: { type: Number, required: true },
         trial: { type: Boolean, required: true },
         variantOption: { type: String, required: true },
-        image: { type: String, required: true }
+        image: { type: String, required: false, default: "" }
     }
 }, { _id: false });
 
@@ -28,7 +28,7 @@ const orderSchema = new Schema({
         type: [orderItemSchema],
         required: true,
         validate: {
-            validator: function(v) { return v && v.length > 0; },
+            validator: function(v) { return v && v.length > 0; },   
             message: 'An order must contain at least one item.'
         }
     },

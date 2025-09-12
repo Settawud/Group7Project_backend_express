@@ -7,7 +7,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "ada.{{ts}}@example.com",
+  "email": "ada.1757649351@example.com",
   "password": "secret123"
 }
 
@@ -25,7 +25,8 @@ Content-Type: application/json
 
 {
   "discountCode": "",
-  "shipping": { "address": "123 Test Rd" }
+  "shipping": 
+  { "address": "123 Test Rd" }
 }
 
 ### Orders: list again
