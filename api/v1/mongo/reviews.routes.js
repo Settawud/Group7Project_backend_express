@@ -24,7 +24,7 @@ router.get("/me", jwtBearer, async (req, res, next) => {
 // POST /api/v1/mongo/reviews (requires auth)
 router.post("/", jwtBearer, async (req, res, next) => {
   try {
-    const { productId, rating, comment } = req.body || {};
+    const { productId, name, rating, comment } = req.body || {};
     if (!productId || !Number(rating)) {
       return res.status(400).json({ error: true, message: "productId and rating required" });
     }
@@ -34,6 +34,7 @@ router.post("/", jwtBearer, async (req, res, next) => {
       const created = await Review.create({
         productId,
         userId: req.user.id,
+        name: name,
         rating: Number(rating),
         comment: comment || "",
       });
