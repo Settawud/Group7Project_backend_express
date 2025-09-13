@@ -75,6 +75,7 @@ GET {{base}}/api/v1/mongo/products
 GET {{base}}/api/v1/mongo/products/{{productId}}
 
 ### Products: upload image to product (single file: field name "image")
+@base = http://localhost:4000
 # @name upload_product_images
 POST {{base}}/api/v1/mongo/products/{{productId}}/images
 Authorization: Bearer {{adminToken}}
@@ -186,9 +187,9 @@ Authorization: Bearer {{adminToken}}
 
 
 ### Variant images: delete one (query param)
-DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId2}}
+DELETE {{base}}/api/v1/mongo/products/{{productId}}/variants/{{variantId}}/images?publicId={{variantPublicId}}
 Authorization: Bearer {{adminToken}}
-delete
+
 ### Products: delete (admin)
 DELETE {{base}}/api/v1/mongo/products/{{productId}}
 Authorization: Bearer {{adminToken}}

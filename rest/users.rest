@@ -8,7 +8,7 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
+  "email": "test@gmai.com",
   "password": "secret123"
 }
 
@@ -81,9 +81,9 @@ Content-Type: application/json
   "buildingNo": "123/45",
   "detail": "หมู่บ้านตัวอย่าง ซอย 5",
   "postcode": "10200",
-  "subdistrict": "REPLACE_SUBDISTRICT_ID",
-  "district": "REPLACE_DISTRICT_ID",
-  "province": "REPLACE_PROVINCE_ID",
+  "subdistrict": "วัดราชบพิธ",
+  "district": "เขตพระนคร",
+  "province": "REPLACกรุงเทพมหานครE_PROVINCE_ID",
   "isDefault": true
 }
 
@@ -93,7 +93,10 @@ PATCH {{base}}/api/v1/mongo/users/me/addresses/{{addressId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "isDefault": true }
+{ "subdistrict": "68c524a9e4b8cf823930b503",
+  "district": "68be96f5a658e27624570cd8",
+  "province": "68be96a5a658e27624570c8b"
+}
 
 ###DELETE address by addressId
 ### Delete address

@@ -120,12 +120,12 @@ router.get("/me", me);
 router.patch("/me", updateMe);
 router.patch("/me/password", changePassword);
 
-// User address routes
-router.get("/users/me/addresses", listAddresses);
-router.get("/users/me/addresses/:addressId", getAddressById);
-router.post("/users/me/addresses", createAddress);
-router.patch("/users/me/addresses/:addressId", updateAddress);
-router.delete("/users/me/addresses/:addressId", deleteAddress);
+// User address routes (mounted at /api/v1/mongo/users)
+router.get("/me/addresses", listAddresses);
+router.get("/me/addresses/:addressId", getAddressById);
+router.post("/me/addresses", createAddress);
+router.patch("/me/addresses/:addressId", updateAddress);
+router.delete("/me/addresses/:addressId", deleteAddress);
 
 // Locations (ปรับ path ไม่ให้ชนกัน และใช้รูปแบบ flat)
 router.get("/me/address/provinces", listProvinces);

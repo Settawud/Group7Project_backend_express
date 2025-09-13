@@ -157,4 +157,12 @@ router.delete(
   deleteVariantImage
 );
 
+// Alternative: delete variant image by query param to avoid URL-encoding slashes
+router.delete(
+  "/:productId/variants/:variantId/images",
+  jwtBearer,
+  requireRole("admin"),
+  deleteVariantImage
+);
+
 export default router;

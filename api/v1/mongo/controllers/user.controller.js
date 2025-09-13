@@ -1,4 +1,8 @@
 import { User } from "../../../../models/User.js";
+// Location models (used for population and listing endpoints)
+import { Province } from "../../../../models/Province.js";
+import { District } from "../../../../models/District.js";
+import { Subdistrict } from "../../../../models/Subdistrict.js";
 import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
@@ -314,9 +318,22 @@ export const verifyEmailConfirm = async (req, res, next) => {
 // GET /api/v1/mongo/users/me/addresses
 export const listAddresses = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user?.id).select("addresses").lean();
+    const user = await User.findById(req.user?.id)
+      .select("addresses")
+      .populate("addresses.province", "name_th name_en province_id")
+      .populate("addresses.district", "name_th name_en district_id province_id")
+      .populate("addresses.subdistrict", "name_th name_en subdistrict_id district_id postcode")
+      .lean();
     if (!user) return res.status(404).json({ error: true, message: "Not found" });
-    return res.json({ error: false, items: user.addresses || [] });
+
+    const items = (user.addresses || []).map((a) => ({
+      ...a,
+      provinceName: a?.province?.name_th || a?.province?.name_en || null,
+      districtName: a?.district?.name_th || a?.district?.name_en || null,
+      subdistrictName: a?.subdistrict?.name_th || a?.subdistrict?.name_en || null,
+      postcode: a?.subdistrict?.postcode || a?.postcode || null,
+    }));
+    return res.json({ error: false, items });
   } catch (err) {
     next(err);
   }
@@ -329,11 +346,23 @@ export const getAddressById = async (req, res, next) => {
     const user = await User.findOne(
       { _id: req.user?.id, "addresses.addressId": addressId },
       { "addresses.$": 1 }
-    ).lean();
+    )
+      .populate("addresses.province", "name_th name_en province_id")
+      .populate("addresses.district", "name_th name_en district_id province_id")
+      .populate("addresses.subdistrict", "name_th name_en subdistrict_id district_id postcode")
+      .lean();
     if (!user || !user.addresses || user.addresses.length === 0) {
       return res.status(404).json({ error: true, message: "Address not found" });
     }
-    return res.status(200).json({ address: user.addresses[0] });
+    const a = user.addresses[0];
+    const address = {
+      ...a,
+      provinceName: a?.province?.name_th || a?.province?.name_en || null,
+      districtName: a?.district?.name_th || a?.district?.name_en || null,
+      subdistrictName: a?.subdistrict?.name_th || a?.subdistrict?.name_en || null,
+      postcode: a?.subdistrict?.postcode || a?.postcode || null,
+    };
+    return res.status(200).json({ address });
   } catch (error) {
     next(error);
   }
@@ -348,7 +377,13 @@ export const createAddress = async (req, res, next) => {
     const addressId = new mongoose.Types.ObjectId();
     const { buildingNo, detail, postcode, subdistrict, district, province, isDefault } = req.body || {};
 
-    if (isDefault) {
+    // Decide defaulting behavior: if request sets isDefault OR user currently has no default, new address becomes default
+    const before = await User.findById(uid).select("addresses").lean();
+    const hadAny = Array.isArray(before?.addresses) && before.addresses.length > 0;
+    const hadDefault = hadAny && before.addresses.some((a) => a.isDefault);
+    const makeDefault = !!isDefault || !hadDefault;
+
+    if (makeDefault) {
       await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
     }
 
@@ -364,7 +399,7 @@ export const createAddress = async (req, res, next) => {
             subdistrict,
             district,
             province,
-            isDefault: !!isDefault,
+            isDefault: makeDefault,
           },
         },
       },
@@ -394,16 +429,21 @@ export const updateAddress = async (req, res, next) => {
     const setOps = {};
     for (const [k, v] of Object.entries(patch)) setOps[`addresses.$.${k}`] = v;
 
-    const updated = await User.findOneAndUpdate(
+    // Avoid positional projection with returnNewDocument (Mongo restriction)
+    const resUpdate = await User.updateOne(
       { _id: uid, "addresses.addressId": addressId },
       { $set: setOps },
-      { new: true, runValidators: true, projection: { "addresses.$": 1 } }
-    ).lean();
+      { runValidators: true }
+    );
 
-    if (!updated || !updated.addresses?.length) {
+    if (!resUpdate.matchedCount) {
       return res.status(404).json({ error: true, message: "Address not found" });
     }
-    return res.json({ error: false, address: updated.addresses[0] });
+
+    const after = await User.findById(uid).select("addresses").lean();
+    const addr = (after?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!addr) return res.status(404).json({ error: true, message: "Address not found" });
+    return res.json({ error: false, address: addr });
   } catch (err) { next(err); }
 };
 
@@ -456,35 +496,78 @@ export const selectAddress = async (req, res, next) => {
     if (!addressId) return res.status(400).json({ error: true, message: "Missing addressId" });
 
     await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
-    const updated = await User.findOneAndUpdate(
+    const resUpdate = await User.updateOne(
       { _id: uid, "addresses.addressId": addressId },
-      { $set: { "addresses.$.isDefault": true } },
-      { new: true, projection: { "addresses.$": 1 } }
-    ).lean();
-    if (!updated || !updated.addresses?.length) {
+      { $set: { "addresses.$.isDefault": true } }
+    );
+    if (!resUpdate.matchedCount) {
       return res.status(404).json({ error: true, message: "Address not found" });
     }
-    return res.json({ error: false, address: updated.addresses[0] });
+    const after = await User.findById(uid).select("addresses").lean();
+    const addr = (after?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!addr) return res.status(404).json({ error: true, message: "Address not found" });
+    return res.json({ error: false, address: addr });
   } catch (err) { next(err); }
 };
 
-// Location helpers (stubs without models)
-export const listDistrictsByProvince = async (req, res, _next) => {
-  const { provinceId } = req.params || {};
-  return res.status(501).json({ error: true, message: "Not implemented: requires Province/District models", provinceId });
-};
-
 export const listSubdistrictsByDistrict = async (req, res, _next) => {
-  const { districtId } = req.params || {};
-  return res.status(501).json({ error: true, message: "Not implemented: requires District/Subdistrict models", districtId });
+  try {
+    const raw = String(req.params?.districtId || "");
+    let key;
+    if (mongoose.isValidObjectId(raw)) {
+      const d = await District.findById(raw).lean();
+      if (!d) return res.status(404).json({ error: true, message: "District not found" });
+      key = d.district_id;
+    } else if (/^\d+$/.test(raw)) {
+      key = parseInt(raw, 10);
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid district identifier" });
+    }
+    const items = await Subdistrict.find({ district_id: key }).select("name_th name_en subdistrict_id postcode").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { _next(err); }
 };
 
 export const getSubdistrict = async (req, res, _next) => {
-  const { subdistrictId } = req.params || {};
-  return res.status(501).json({ error: true, message: "Not implemented: requires Subdistrict model", subdistrictId });
+  try {
+    const raw = String(req.params?.subdistrictId || "");
+    let doc = null;
+    if (mongoose.isValidObjectId(raw)) {
+      doc = await Subdistrict.findById(raw).lean();
+    } else if (/^\d+$/.test(raw)) {
+      doc = await Subdistrict.findOne({ subdistrict_id: parseInt(raw, 10) }).lean();
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid subdistrict identifier" });
+    }
+    if (!doc) return res.status(404).json({ error: true, message: "Subdistrict not found" });
+    return res.json({ error: false, item: doc });
+  } catch (err) { _next(err); }
 };
 
-// List all provinces (stub)
-export const listProvinces = async (_req, res, _next) => {
-  return res.status(501).json({ error: true, message: "Not implemented: requires Province model" });
+// List all provinces
+export const listProvinces = async (_req, res, next) => {
+  try {
+    const items = await Province.find().select("name_th name_en province_id").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { next(err); }
 };
+
+export const listDistrictsByProvince = async (req, res, next) => {
+  try {
+    const raw = String(req.params?.provinceId || "");
+    let key;
+    if (mongoose.isValidObjectId(raw)) {
+      const p = await Province.findById(raw).lean();
+      if (!p) return res.status(404).json({ error: true, message: "Province not found" });
+      key = p.province_id;
+    } else if (/^\d+$/.test(raw)) {
+      key = parseInt(raw, 10);
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid province identifier" });
+    }
+    const items = await District.find({ province_id: key }).select("name_th name_en district_id province_id").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { next(err); }
+};
+
+// (removed stub listProvinces)
