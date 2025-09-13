@@ -32,8 +32,19 @@ router.post("/items", async (req, res, next) => {
     const variant = product.variants.id(variantId);
     if (!variant) return res.status(404).json({ error: true, message: "Variant not found" });
 
-    const cart = await Cart.findOne({ userId: req.user.id });
-    const idx = cart.items.findIndex((i) => String(i.productId) === String(productId) && String(i.variantId) === String(variantId));
+    let cart = await Cart.findOne({ userId: req.user.id });
+
+    if (!cart) {
+      cart = new Cart({
+        userId: req.user.id,
+        items: [],
+      });
+    }
+
+    const idx = cart.items.findIndex((i) =>
+      String(i.productId) === String(productId) && String(i.variantId) === String(variantId)
+    );
+
     if (idx === -1) cart.items.push({ productId, variantId, quantity: qty, trial: !!variant.trial });
     else cart.items[idx].quantity += qty;
     await cart.save();
@@ -47,7 +58,16 @@ router.patch("/items/:productId/:variantId", async (req, res, next) => {
     const qty = Number(req.body?.quantity);
     if (!qty) return res.status(400).json({ error: true, message: "quantity required" });
     const cart = await Cart.findOne({ userId: req.user.id });
-    const idx = cart.items.findIndex((i) => String(i.productId) === String(req.params.productId) && String(i.variantId) === String(req.params.variantId));
+
+    if (!cart) {
+      return res.status(404).json({ error: true, message: "Cart not found" });
+    }
+
+    const idx = cart.items.findIndex((i) =>
+      String(i.productId) === String(req.params.productId) &&
+      String(i.variantId) === String(req.params.variantId)
+    );
+
     if (idx === -1) return res.status(404).json({ error: true, message: "Item not found" });
     cart.items[idx].quantity = qty;
     await cart.save();
