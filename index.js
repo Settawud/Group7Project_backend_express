@@ -21,8 +21,8 @@ const defaultOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
-  "https://group7-project-sprint2-git-develop-settawuds-projects.vercel.app/api/v1/mongo",
-  "https://group7-project-sprint2.vercel.app/api/v1/mongo",
+  "https://group7-project-sprint2-git-develop-settawuds-projects.vercel.app",
+  "https://group7-project-sprint2.vercel.app",
 ];
 const envOrigins = (process.env.CORS_ORIGINS || "")
   .split(",")
