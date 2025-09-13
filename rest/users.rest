@@ -105,6 +105,9 @@ Authorization: Bearer {{token}}
 @districtId = REPLACE_DISTRICT_ID
 @subdistrictId = REPLACE_SUBDISTRICT_ID
 
+GET {{base}}/api/v1/mongo/users/me/address/provinces
+Authorization: Bearer {{token}}
+
 GET {{base}}/api/v1/mongo/users/me/address/province/{{provinceId}}/districts
 Authorization: Bearer {{token}}
 

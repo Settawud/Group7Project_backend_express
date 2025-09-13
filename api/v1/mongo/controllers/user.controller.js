@@ -483,3 +483,8 @@ export const getSubdistrict = async (req, res, _next) => {
   const { subdistrictId } = req.params || {};
   return res.status(501).json({ error: true, message: "Not implemented: requires Subdistrict model", subdistrictId });
 };
+
+// List all provinces (stub)
+export const listProvinces = async (_req, res, _next) => {
+  return res.status(501).json({ error: true, message: "Not implemented: requires Province model" });
+};

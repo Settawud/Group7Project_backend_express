@@ -16,6 +16,7 @@ import {
   listDistrictsByProvince, 
   listSubdistrictsByDistrict, 
   getSubdistrict,
+  listProvinces,
 } from "./controllers/user.controller.js";
 
 
@@ -127,6 +128,7 @@ router.patch("/users/me/addresses/:addressId", updateAddress);
 router.delete("/users/me/addresses/:addressId", deleteAddress);
 
 // Locations (ปรับ path ไม่ให้ชนกัน และใช้รูปแบบ flat)
+router.get("/me/address/provinces", listProvinces);
 router.get("/me/address/province/:provinceId/districts", listDistrictsByProvince);
 router.get("/me/address/district/:districtId/subdistricts", listSubdistrictsByDistrict);
 router.get("/me/address/subdistrict/:subdistrictId", getSubdistrict);
