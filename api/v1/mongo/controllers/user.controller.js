@@ -2,8 +2,9 @@ import { User } from "../../../../models/User.js";
 import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import mongoose from "mongoose";
 
-//POST /api/auth/register
+//POST /api/v1/mongo/auth/register
 
 export const register = async (req, res, next) => {
     try {
@@ -35,7 +36,7 @@ export const register = async (req, res, next) => {
     }
 };
 
-// POST /api/auth/login
+// POST /api/v1/mongo/auth/login
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body || {};
@@ -90,7 +91,7 @@ export const login = async (req, res, next) => {
     }
 };
 
-// GET /api/users/me
+// GET /api/v1/mongo/users/me
 export const me = async (req, res, next) => {
     try {
         // ใช้ req.user.id ที่เติมโดย jwtBearer
@@ -102,7 +103,7 @@ export const me = async (req, res, next) => {
     }
 }
 
-// PATCH /api/users/me (แก้ไขโปรไฟล์ทั่วไป)
+// PATCH /api/v1/mongo/users/me (แก้ไขโปรไฟล์ทั่วไป)
 export const updateMe = async (req, res, next) => {
     try {
         const { firstName, lastName, phone, image, addresses } = req.body || {};
@@ -117,7 +118,7 @@ export const updateMe = async (req, res, next) => {
     }
 };
 
-// PATCH /api/users/me/password (เปลี่ยนรหัสผ่าน)
+// PATCH /api/v1/mongo/users/me/password (เปลี่ยนรหัสผ่าน)
 export const changePassword = async (req, res, next) => {
     try {
         const { oldPassword, newPassword } = req.body;
@@ -307,4 +308,178 @@ export const verifyEmailConfirm = async (req, res, next) => {
     await user.save();
     return res.json({ error: false, message: "Email verified" });
   } catch (err) { next(err); }
+};
+
+// === Address CRUD (for current user) ===
+// GET /api/v1/mongo/users/me/addresses
+export const listAddresses = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user?.id).select("addresses").lean();
+    if (!user) return res.status(404).json({ error: true, message: "Not found" });
+    return res.json({ error: false, items: user.addresses || [] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/v1/mongo/users/me/addresses/:addressId
+export const getAddressById = async (req, res, next) => {
+  try {
+    const { addressId } = req.params;
+    const user = await User.findOne(
+      { _id: req.user?.id, "addresses.addressId": addressId },
+      { "addresses.$": 1 }
+    ).lean();
+    if (!user || !user.addresses || user.addresses.length === 0) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+    return res.status(200).json({ address: user.addresses[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/v1/mongo/users/me/addresses
+export const createAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const addressId = new mongoose.Types.ObjectId();
+    const { buildingNo, detail, postcode, subdistrict, district, province, isDefault } = req.body || {};
+
+    if (isDefault) {
+      await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      uid,
+      {
+        $push: {
+          addresses: {
+            addressId,
+            buildingNo,
+            detail,
+            postcode,
+            subdistrict,
+            district,
+            province,
+            isDefault: !!isDefault,
+          },
+        },
+      },
+      { new: true, runValidators: true, select: "addresses" }
+    ).lean();
+
+    const created = (updated?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    return res.status(201).json({ error: false, address: created });
+  } catch (err) { next(err); }
+};
+
+// PATCH /api/v1/mongo/users/me/addresses/:addressId
+export const updateAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const { addressId } = req.params;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const allow = ["buildingNo", "detail", "postcode", "subdistrict", "district", "province", "isDefault"];
+    const patch = {};
+    for (const k of allow) if (k in (req.body || {})) patch[k] = req.body[k];
+
+    if (patch.isDefault === true) {
+      await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    }
+
+    const setOps = {};
+    for (const [k, v] of Object.entries(patch)) setOps[`addresses.$.${k}`] = v;
+
+    const updated = await User.findOneAndUpdate(
+      { _id: uid, "addresses.addressId": addressId },
+      { $set: setOps },
+      { new: true, runValidators: true, projection: { "addresses.$": 1 } }
+    ).lean();
+
+    if (!updated || !updated.addresses?.length) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+    return res.json({ error: false, address: updated.addresses[0] });
+  } catch (err) { next(err); }
+};
+
+// DELETE /api/v1/mongo/users/me/addresses/:addressId
+export const deleteAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const { addressId } = req.params;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const before = await User.findById(uid).select("addresses").lean();
+    if (!before) return res.status(404).json({ error: true, message: "Not found" });
+    const target = (before.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!target) return res.status(404).json({ error: true, message: "Address not found" });
+
+    const wasDefault = !!target.isDefault;
+    await User.updateOne({ _id: uid }, { $pull: { addresses: { addressId } } });
+
+    // Fetch remaining addresses
+    const after = await User.findById(uid).select("addresses").lean();
+    const remaining = after?.addresses || [];
+
+    if (remaining.length === 0) {
+      return res.json({ error: false, deleted: { addressId }, message: "No addresses left. Please add an address." });
+    }
+
+    // If deleted one was default, promote the first remaining as default
+    if (wasDefault) {
+      const first = remaining[0];
+      if (first && first.addressId) {
+        await User.updateOne(
+          { _id: uid, "addresses.addressId": first.addressId },
+          { $set: { "addresses.$.isDefault": true } }
+        );
+        return res.json({ error: false, deleted: { addressId }, newDefaultAddressId: String(first.addressId) });
+      }
+    }
+
+    return res.json({ error: false, deleted: { addressId } });
+  } catch (err) { next(err); }
+};
+
+// Namespace and aliases for routes
+
+export const selectAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const addressId = req.params?.addressId || req.body?.addressId;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+    if (!addressId) return res.status(400).json({ error: true, message: "Missing addressId" });
+
+    await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    const updated = await User.findOneAndUpdate(
+      { _id: uid, "addresses.addressId": addressId },
+      { $set: { "addresses.$.isDefault": true } },
+      { new: true, projection: { "addresses.$": 1 } }
+    ).lean();
+    if (!updated || !updated.addresses?.length) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+    return res.json({ error: false, address: updated.addresses[0] });
+  } catch (err) { next(err); }
+};
+
+// Location helpers (stubs without models)
+export const listDistrictsByProvince = async (req, res, _next) => {
+  const { provinceId } = req.params || {};
+  return res.status(501).json({ error: true, message: "Not implemented: requires Province/District models", provinceId });
+};
+
+export const listSubdistrictsByDistrict = async (req, res, _next) => {
+  const { districtId } = req.params || {};
+  return res.status(501).json({ error: true, message: "Not implemented: requires District/Subdistrict models", districtId });
+};
+
+export const getSubdistrict = async (req, res, _next) => {
+  const { subdistrictId } = req.params || {};
+  return res.status(501).json({ error: true, message: "Not implemented: requires Subdistrict model", subdistrictId });
 };

@@ -43,7 +43,8 @@ Content-Type: application/json
   "tags": [
     "แผ่นรองเมาส์",
     "รองข้อมือ",
-    "เมาส์",],
+    "เมาส์"]
+    ,
   "material": "ผ้า Lycra, เจล",
   "thumbnails": [],
   "dimension": {
@@ -54,21 +55,13 @@ Content-Type: application/json
   },
    "variants": [
     {
-      "_id": {
-        "$oid": "68c3ab6df0436972ab8dcd98"
-      },
       "trial": false,
-      "colorId": {
-        "$oid": "68c3920d4670b96d19e824ff"
-      },
+      "colorId": "68c3920d4670b96d19e824ff",
       "price": 299,
-      "quantityInStock": 18,
-      "image": null
+      "quantityInStock": 18
     }
-    
-  "variants": [
-    { "trial": false, "colorId": "68c3920d4670b96d19e824ff", "price": 9900, "quantityInStock": 10, "image": [] }
-  ]
+   ]
+
 }
 
 ###
@@ -88,10 +81,10 @@ Authorization: Bearer {{adminToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="image"; filename="chair.jpg"
-Content-Type: image/jpeg
+Content-Disposition: form-data; name="image"; filename="test1234.png"
+Content-Type: image/png
 
-< ./chair.jpg
+< ./test1234.png
 --WebAppBoundary--
 
 ###
@@ -104,10 +97,10 @@ Authorization: Bearer {{adminToken}}
 Content-Type: multipart/form-data; boundary=WebAppBoundary
 
 --WebAppBoundary
-Content-Disposition: form-data; name="image"; filename="chair.jpg"
-Content-Type: image/jpeg
+Content-Disposition: form-data; name="image"; filename="test1234.png"
+Content-Type: image/png
 
-< ./chair.jpg
+< ./test1234.png
 --WebAppBoundary--
 
 ###
