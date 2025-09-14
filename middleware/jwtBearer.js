@@ -6,7 +6,10 @@ export default async function jwtBearer(req, res, next) {
   const cookieToken = req.cookies?.accessToken;
   const useToken = token || cookieToken;
   if (!useToken) {
-    return res.status(401).json({ error: true, message: "Unauthorized" });
+    console.log(req.headers)
+    console.log(req.cookies)
+    return res.status(401).json({ error: true, message: "Unauthorized", headers: req.headers, cookies: req.cookies });
+    
   }
   try {
     const decoded = jwt.verify(useToken, process.env.JWT_SECRET || "dev_secret");

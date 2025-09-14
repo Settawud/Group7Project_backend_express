@@ -23,7 +23,8 @@ POST {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{
+{  "name": "test",
+  "phone": "0999999999"
   "discountCode": "",
   "shipping": 
   { "address": "123 Test Rd" }

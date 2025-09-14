@@ -62,6 +62,8 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
 
 
 const buildOrderFromCart = async (userId) => {
+  const { name, phone } = req.body
+
   const cart = await Cart.findOne({ userId });
   if (!cart || !cart.items.length) return null;
 
@@ -85,6 +87,8 @@ const buildOrderFromCart = async (userId) => {
       productId: p._id,
       productName: p.name,
       discountIsCreated: false,
+      name: name,
+      phone: phone,
       variant: {
         variantId: v._id,
         quantity: ci.quantity,

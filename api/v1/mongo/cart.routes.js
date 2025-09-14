@@ -32,7 +32,8 @@ router.post("/items", async (req, res, next) => {
     const variant = product.variants.id(variantId);
     if (!variant) return res.status(404).json({ error: true, message: "Variant not found" });
 
-    const cart = await Cart.findOne({ userId: req.user.id });
+    let cart = await Cart.findOne({ userId: req.user.id });
+
     const idx = cart.items.findIndex((i) => String(i.productId) === String(productId) && String(i.variantId) === String(variantId));
     if (idx === -1) cart.items.push({ productId, variantId, quantity: qty, trial: !!variant.trial });
     else cart.items[idx].quantity += qty;
@@ -55,28 +56,40 @@ router.patch("/items/:productId/:variantId", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/v1/mongo/cart/items/:productId/:variantId
-router.delete("/items/:productId/:variantId", async (req, res, next) => {
+// DELETE /api/v1/mongo/cart/items/delete-multiple
+router.post("/items/delete-multiple", async (req, res, next) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user.id });
-      if (!cart) {
-      return res.status(404).json({ success: false, message: "Cart not found for this user." });
-    }
-    const initialLength = cart.items.length;
-    const { productId, variantId } = req.params;
+    const { items } = req.body;
+    const userId = req.user.id; // Get user ID from the authentication middleware
 
-    // Filter out the item that matches both productId and variantId
-    cart.items = cart.items.filter(
-      (item) => !(String(item.productId) === String(productId) && String(item.variantId) === String(variantId))
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, message: "No items provided for deletion." });
+    }
+
+    // Create an array of update promises for each item
+    const deletionPromises = items.map((item) => 
+      Cart.findOneAndUpdate(
+        { userId: userId },
+        {
+          $pull: {
+            items: {
+              productId: item.productId,
+              variantId: item.variantId,
+            },
+          },
+        },
+        { new: true } // Return the updated document
+      )
     );
+    
+    // Wait for all database operations to complete
+    await Promise.all(deletionPromises);
 
-    // Check if an item was actually removed
-    if (cart.items.length === initialLength) {
-      return res.status(404).json({ success: false, message: "Item not found in cart." });
-    }
-    await cart.save();
-    res.json({ success: true, cart });
-  } catch (err) { next(err); }
+    res.json({ success: true, message: "Items successfully deleted." });
+
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
