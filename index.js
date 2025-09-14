@@ -7,7 +7,6 @@ import limiter from "./middleware/rateLimiter.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 
-
 dotenv.config();
 
 const app = express();
@@ -17,15 +16,29 @@ app.set("trust proxy", 1);
 // Global middlewares
 app.use(helmet());
 
+// Build CORS origin list from env, fallback to common dev/prod URLs
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "https://group7-project-sprint2-git-develop-settawuds-projects.vercel.app",
+  "https://group7-project-sprint2.vercel.app",
+];
+const envOrigins = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowedOrigins = [...new Set([...envOrigins, ...defaultOrigins])];
+
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://localhost:5175",
-    
-    ,
-  ], // frontend domain
-  credentials: true, // ✅ allow cookies to be sent
+  origin: function (origin, callback) {
+    // allow no-origin requests (curl, mobile apps)
+    if (!origin) return callback(null, true);
+    const ok = allowedOrigins.includes(origin);
+    callback(ok ? null : new Error(`CORS: ${origin} not allowed`), ok);
+  },
+  credentials: true,
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));

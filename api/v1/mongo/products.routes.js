@@ -20,12 +20,16 @@ import {
   uploadVariantImages,
   replaceVariantImage,
   deleteVariantImage,
+  popularProducts,
 } from "./controllers/product.controller.js";
 
 const router = express.Router();
             
 // GET /api/v1/mongo/products?q=...&category=...
 router.get("/", listProducts);
+
+// GET /api/v1/mongo/products/popular
+router.get("/popular", popularProducts);
 
 // GET /api/v1/mongo/products/:productId
 router.get("/:productId", getProduct);
@@ -152,6 +156,14 @@ router.put(
 // DELETE variant image by publicId
 router.delete(
   "/:productId/variants/:variantId/images/:publicId",
+  jwtBearer,
+  requireRole("admin"),
+  deleteVariantImage
+);
+
+// Alternative: delete variant image by query param to avoid URL-encoding slashes
+router.delete(
+  "/:productId/variants/:variantId/images",
   jwtBearer,
   requireRole("admin"),
   deleteVariantImage

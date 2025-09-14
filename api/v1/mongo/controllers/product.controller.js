@@ -1,4 +1,5 @@
 import { Product } from "../../../../models/Product.js";
+import { reviews as Review } from "../../../../models/Reviews.js";
 import cloudinary from "../../../../config/cloudinary.js";
 
 // Helpers
@@ -28,8 +29,39 @@ export async function listProducts(req, res, next) {
 
     const filter = {};
 
+    // Category synonyms (English/Thai) support
     if (category) {
-      filter.category = category;
+      const raw = String(category || "").trim().toLowerCase();
+      const base = raw.split("(")[0].trim();
+      const isIn = (arr) => arr.includes(base);
+      const groups = {
+        chairs: [
+          "chairs", "chair", "ergonomic chair", "ergonomic chairs",
+          "เก้าอี้", "เก้าอี้เพื่อสุขภาพ"
+        ],
+        tables: [
+          "tables", "table", "desk", "desks", "standing desk", "standing desks",
+          "โต๊ะ", "โต๊ะยืน"
+        ],
+        accessories: [
+          "accessories", "accessory", "อุปกรณ์", "อุปกรณ์เสริม"
+        ],
+      };
+      let groupKey = null;
+      if (isIn(groups.chairs)) groupKey = 'chairs';
+      else if (isIn(groups.tables)) groupKey = 'tables';
+      else if (isIn(groups.accessories)) groupKey = 'accessories';
+
+      if (groupKey) {
+        // Build case-insensitive OR of known aliases so DB can match English or Thai values
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const ors = groups[groupKey].map((label) => ({ category: new RegExp(`^${esc(label)}$`, 'i') }));
+        filter.$or = (filter.$or || []).concat(ors);
+      } else {
+        // Fallback: case-insensitive equality on provided string (without parentheses)
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        filter.category = new RegExp(`^${esc(base)}$`, 'i');
+      }
     }
 
     const min = parseFloat(minPrice);
@@ -346,5 +378,57 @@ export async function deleteVariantImage(req, res, next) {
     variant.image = undefined;
     await product.save();
     return res.json({ success: true });
+  } catch (err) { next(err); }
+}
+
+// Popular products by average review rating
+export async function popularProducts(req, res, next) {
+  try {
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit) || 4, 48));
+    const offset = Math.max(0, parseInt(req.query.offset) || 0);
+    const minAvg = isNaN(parseFloat(req.query.minAvg)) ? 3 : parseFloat(req.query.minAvg);
+    // Aggregate average ratings per product
+    const aggAll = await Review.aggregate([
+      { $group: { _id: "$productId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
+      { $match: { avg: { $gte: minAvg } } },
+      { $sort: { avg: -1, count: -1 } },
+    ]);
+
+    const total = aggAll.length;
+    const win = aggAll.slice(offset, offset + limit);
+    const ids = win.map((a) => a._id);
+    if (!ids.length) {
+      return res.json({ success: true, total, count: 0, items: [] });
+    }
+    const products = await Product.find({ _id: { $in: ids } }).lean();
+    const mapProd = new Map(products.map((p) => [String(p._id), p]));
+
+    const items = [];
+    for (const a of win) {
+      const p = mapProd.get(String(a._id));
+      if (!p) continue;
+      // compute primary image (thumbnail first, then variant image)
+      const t0 = Array.isArray(p.thumbnails) ? p.thumbnails[0] : null;
+      const thumbUrl = typeof t0 === "string" ? t0 : t0?.url || null;
+      let variantUrl = null;
+      if (Array.isArray(p.variants)) {
+        const v = p.variants.find((vv) => vv?.image && (typeof vv.image === "string" ? vv.image : vv.image?.url));
+        if (v) variantUrl = typeof v.image === "string" ? v.image : v.image?.url;
+      }
+      const image = thumbUrl || variantUrl || null;
+      items.push({
+        _id: p._id,
+        name: p.name,
+        image,
+        category: p.category,
+        avgRating: a.avg || 0,
+        reviewCount: a.count || 0,
+        minPrice: Array.isArray(p.variants) && p.variants.length ? Math.min(...p.variants.map((v) => Number(v.price || 0))) : 0,
+        trial: !!(p.trial || (Array.isArray(p.variants) && p.variants.some((v) => !!v.trial))),
+      });
+    }
+
+    res.set("Cache-Control", "public, max-age=60, s-maxage=120");
+    return res.json({ success: true, total, count: items.length, items, offset, limit, minAvg });
   } catch (err) { next(err); }
 }

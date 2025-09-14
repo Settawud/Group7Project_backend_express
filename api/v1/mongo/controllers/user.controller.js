@@ -1,9 +1,14 @@
 import { User } from "../../../../models/User.js";
+// Location models (used for population and listing endpoints)
+import { Province } from "../../../../models/Province.js";
+import { District } from "../../../../models/District.js";
+import { Subdistrict } from "../../../../models/Subdistrict.js";
 import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import mongoose from "mongoose";
 
-//POST /api/auth/register
+//POST /api/v1/mongo/auth/register
 
 export const register = async (req, res, next) => {
     try {
@@ -35,7 +40,7 @@ export const register = async (req, res, next) => {
     }
 };
 
-// POST /api/auth/login
+// POST /api/v1/mongo/auth/login
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body || {};
@@ -90,7 +95,7 @@ export const login = async (req, res, next) => {
     }
 };
 
-// GET /api/users/me
+// GET /api/v1/mongo/users/me
 export const me = async (req, res, next) => {
     try {
         // ใช้ req.user.id ที่เติมโดย jwtBearer
@@ -102,7 +107,7 @@ export const me = async (req, res, next) => {
     }
 }
 
-// PATCH /api/users/me (แก้ไขโปรไฟล์ทั่วไป)
+// PATCH /api/v1/mongo/users/me (แก้ไขโปรไฟล์ทั่วไป)
 export const updateMe = async (req, res, next) => {
     try {
         const { firstName, lastName, phone, image, addresses } = req.body || {};
@@ -117,7 +122,7 @@ export const updateMe = async (req, res, next) => {
     }
 };
 
-// PATCH /api/users/me/password (เปลี่ยนรหัสผ่าน)
+// PATCH /api/v1/mongo/users/me/password (เปลี่ยนรหัสผ่าน)
 export const changePassword = async (req, res, next) => {
     try {
         const { oldPassword, newPassword } = req.body;
@@ -308,3 +313,261 @@ export const verifyEmailConfirm = async (req, res, next) => {
     return res.json({ error: false, message: "Email verified" });
   } catch (err) { next(err); }
 };
+
+// === Address CRUD (for current user) ===
+// GET /api/v1/mongo/users/me/addresses
+export const listAddresses = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user?.id)
+      .select("addresses")
+      .populate("addresses.province", "name_th name_en province_id")
+      .populate("addresses.district", "name_th name_en district_id province_id")
+      .populate("addresses.subdistrict", "name_th name_en subdistrict_id district_id postcode")
+      .lean();
+    if (!user) return res.status(404).json({ error: true, message: "Not found" });
+
+    const items = (user.addresses || []).map((a) => ({
+      ...a,
+      provinceName: a?.province?.name_th || a?.province?.name_en || null,
+      districtName: a?.district?.name_th || a?.district?.name_en || null,
+      subdistrictName: a?.subdistrict?.name_th || a?.subdistrict?.name_en || null,
+      postcode: a?.subdistrict?.postcode || a?.postcode || null,
+    }));
+    return res.json({ error: false, items });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// GET /api/v1/mongo/users/me/addresses/:addressId
+export const getAddressById = async (req, res, next) => {
+  try {
+    const { addressId } = req.params;
+    const user = await User.findOne(
+      { _id: req.user?.id, "addresses.addressId": addressId },
+      { "addresses.$": 1 }
+    )
+      .populate("addresses.province", "name_th name_en province_id")
+      .populate("addresses.district", "name_th name_en district_id province_id")
+      .populate("addresses.subdistrict", "name_th name_en subdistrict_id district_id postcode")
+      .lean();
+    if (!user || !user.addresses || user.addresses.length === 0) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+    const a = user.addresses[0];
+    const address = {
+      ...a,
+      provinceName: a?.province?.name_th || a?.province?.name_en || null,
+      districtName: a?.district?.name_th || a?.district?.name_en || null,
+      subdistrictName: a?.subdistrict?.name_th || a?.subdistrict?.name_en || null,
+      postcode: a?.subdistrict?.postcode || a?.postcode || null,
+    };
+    return res.status(200).json({ address });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/v1/mongo/users/me/addresses
+export const createAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const addressId = new mongoose.Types.ObjectId();
+    const { buildingNo, detail, postcode, subdistrict, district, province, isDefault } = req.body || {};
+
+    // Decide defaulting behavior: if request sets isDefault OR user currently has no default, new address becomes default
+    const before = await User.findById(uid).select("addresses").lean();
+    const hadAny = Array.isArray(before?.addresses) && before.addresses.length > 0;
+    const hadDefault = hadAny && before.addresses.some((a) => a.isDefault);
+    const makeDefault = !!isDefault || !hadDefault;
+
+    if (makeDefault) {
+      await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      uid,
+      {
+        $push: {
+          addresses: {
+            addressId,
+            buildingNo,
+            detail,
+            postcode,
+            subdistrict,
+            district,
+            province,
+            isDefault: makeDefault,
+          },
+        },
+      },
+      { new: true, runValidators: true, select: "addresses" }
+    ).lean();
+
+    const created = (updated?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    return res.status(201).json({ error: false, address: created });
+  } catch (err) { next(err); }
+};
+
+// PATCH /api/v1/mongo/users/me/addresses/:addressId
+export const updateAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const { addressId } = req.params;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const allow = ["buildingNo", "detail", "postcode", "subdistrict", "district", "province", "isDefault"];
+    const patch = {};
+    for (const k of allow) if (k in (req.body || {})) patch[k] = req.body[k];
+
+    if (patch.isDefault === true) {
+      await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    }
+
+    const setOps = {};
+    for (const [k, v] of Object.entries(patch)) setOps[`addresses.$.${k}`] = v;
+
+    // Avoid positional projection with returnNewDocument (Mongo restriction)
+    const resUpdate = await User.updateOne(
+      { _id: uid, "addresses.addressId": addressId },
+      { $set: setOps },
+      { runValidators: true }
+    );
+
+    if (!resUpdate.matchedCount) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+
+    const after = await User.findById(uid).select("addresses").lean();
+    const addr = (after?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!addr) return res.status(404).json({ error: true, message: "Address not found" });
+    return res.json({ error: false, address: addr });
+  } catch (err) { next(err); }
+};
+
+// DELETE /api/v1/mongo/users/me/addresses/:addressId
+export const deleteAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const { addressId } = req.params;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+
+    const before = await User.findById(uid).select("addresses").lean();
+    if (!before) return res.status(404).json({ error: true, message: "Not found" });
+    const target = (before.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!target) return res.status(404).json({ error: true, message: "Address not found" });
+
+    const wasDefault = !!target.isDefault;
+    await User.updateOne({ _id: uid }, { $pull: { addresses: { addressId } } });
+
+    // Fetch remaining addresses
+    const after = await User.findById(uid).select("addresses").lean();
+    const remaining = after?.addresses || [];
+
+    if (remaining.length === 0) {
+      return res.json({ error: false, deleted: { addressId }, message: "No addresses left. Please add an address." });
+    }
+
+    // If deleted one was default, promote the first remaining as default
+    if (wasDefault) {
+      const first = remaining[0];
+      if (first && first.addressId) {
+        await User.updateOne(
+          { _id: uid, "addresses.addressId": first.addressId },
+          { $set: { "addresses.$.isDefault": true } }
+        );
+        return res.json({ error: false, deleted: { addressId }, newDefaultAddressId: String(first.addressId) });
+      }
+    }
+
+    return res.json({ error: false, deleted: { addressId } });
+  } catch (err) { next(err); }
+};
+
+// Namespace and aliases for routes
+
+export const selectAddress = async (req, res, next) => {
+  try {
+    const uid = req.user?.id;
+    const addressId = req.params?.addressId || req.body?.addressId;
+    if (!uid) return res.status(401).json({ error: true, message: "Unauthorized" });
+    if (!addressId) return res.status(400).json({ error: true, message: "Missing addressId" });
+
+    await User.updateOne({ _id: uid }, { $set: { "addresses.$[].isDefault": false } });
+    const resUpdate = await User.updateOne(
+      { _id: uid, "addresses.addressId": addressId },
+      { $set: { "addresses.$.isDefault": true } }
+    );
+    if (!resUpdate.matchedCount) {
+      return res.status(404).json({ error: true, message: "Address not found" });
+    }
+    const after = await User.findById(uid).select("addresses").lean();
+    const addr = (after?.addresses || []).find((a) => String(a.addressId) === String(addressId));
+    if (!addr) return res.status(404).json({ error: true, message: "Address not found" });
+    return res.json({ error: false, address: addr });
+  } catch (err) { next(err); }
+};
+
+export const listSubdistrictsByDistrict = async (req, res, _next) => {
+  try {
+    const raw = String(req.params?.districtId || "");
+    let key;
+    if (mongoose.isValidObjectId(raw)) {
+      const d = await District.findById(raw).lean();
+      if (!d) return res.status(404).json({ error: true, message: "District not found" });
+      key = d.district_id;
+    } else if (/^\d+$/.test(raw)) {
+      key = parseInt(raw, 10);
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid district identifier" });
+    }
+    const items = await Subdistrict.find({ district_id: key }).select("name_th name_en subdistrict_id postcode").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { _next(err); }
+};
+
+export const getSubdistrict = async (req, res, _next) => {
+  try {
+    const raw = String(req.params?.subdistrictId || "");
+    let doc = null;
+    if (mongoose.isValidObjectId(raw)) {
+      doc = await Subdistrict.findById(raw).lean();
+    } else if (/^\d+$/.test(raw)) {
+      doc = await Subdistrict.findOne({ subdistrict_id: parseInt(raw, 10) }).lean();
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid subdistrict identifier" });
+    }
+    if (!doc) return res.status(404).json({ error: true, message: "Subdistrict not found" });
+    return res.json({ error: false, item: doc });
+  } catch (err) { _next(err); }
+};
+
+// List all provinces
+export const listProvinces = async (_req, res, next) => {
+  try {
+    const items = await Province.find().select("name_th name_en province_id").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { next(err); }
+};
+
+export const listDistrictsByProvince = async (req, res, next) => {
+  try {
+    const raw = String(req.params?.provinceId || "");
+    let key;
+    if (mongoose.isValidObjectId(raw)) {
+      const p = await Province.findById(raw).lean();
+      if (!p) return res.status(404).json({ error: true, message: "Province not found" });
+      key = p.province_id;
+    } else if (/^\d+$/.test(raw)) {
+      key = parseInt(raw, 10);
+    } else {
+      return res.status(400).json({ error: true, message: "Invalid province identifier" });
+    }
+    const items = await District.find({ province_id: key }).select("name_th name_en district_id province_id").lean();
+    return res.json({ error: false, count: items.length, items });
+  } catch (err) { next(err); }
+};
+
+// (removed stub listProvinces)

@@ -7,11 +7,11 @@ POST {{base}}/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
-  "firstName": "Ada",
-  "lastName": "Lovelace",
-  "email": "{{email}}",
+  "firstName": "best",
+  "lastName": "best",
+  "email": "best@best.com",
   "phone": "0801234567",
-  "password": "secret123"
+  "password": "123456"
 }
 
 ### Auth: login user
