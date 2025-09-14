@@ -20,12 +20,16 @@ import {
   uploadVariantImages,
   replaceVariantImage,
   deleteVariantImage,
+  popularProducts,
 } from "./controllers/product.controller.js";
 
 const router = express.Router();
             
 // GET /api/v1/mongo/products?q=...&category=...
 router.get("/", listProducts);
+
+// GET /api/v1/mongo/products/popular
+router.get("/popular", popularProducts);
 
 // GET /api/v1/mongo/products/:productId
 router.get("/:productId", getProduct);
