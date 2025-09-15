@@ -56,12 +56,12 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
     amount = Number(disc.value || 0);
   }
   if (!Number.isFinite(amount) || amount <= 0) amount = 0;
-  amount = Math.min(amount, subtotal); // never exceed subtotal
+  amount = Math.min(amount, subtotal);
   return { amount, code: norm };
 }
 
 
-const buildOrderFromCart = async (userId) => {
+const buildOrderFromCart = async (userId, installationFee = 0) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || !cart.items.length) return null;
 
@@ -91,17 +91,27 @@ const buildOrderFromCart = async (userId) => {
         price: v.price,
         trial: !!v.trial,
         variantOption: colorName,
-        image: (v.image?.url || "") || pickFirstImageUrl(p.images) || pickFirstImageUrl(p.thumbnails) || "",
+        image:
+          (v.image?.url || "") ||
+          pickFirstImageUrl(p.images) ||
+          pickFirstImageUrl(p.thumbnails) ||
+          "",
       },
     });
   }
   if (!items.length) return null;
 
-  const subtotal = items.reduce((sum, it) => sum + it.variant.price * it.variant.quantity, 0);
+  const subtotal = items.reduce(
+    (sum, it) => sum + it.variant.price * it.variant.quantity,
+    0
+  );
+
   const discount = 0;
-  const installationFee = 0;
   const total = subtotal - discount + installationFee;
-  const orderNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+
+  const orderNumber = `INV-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
 
   return {
     userId,
@@ -109,7 +119,7 @@ const buildOrderFromCart = async (userId) => {
     orderStatus: "Pending",
     subtotalAmount: subtotal,
     discountAmount: discount,
-    installationFee,
+    installationFee: installationFee,
     items,
     shipping: {},
   };
@@ -128,22 +138,38 @@ router.get("/", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const uid = new mongoose.Types.ObjectId(req.user.id);
-    const payload = await buildOrderFromCart(uid);
-    if (!payload) return res.status(400).json({ error: true, message: "Cart empty or invalid" });
 
-    // ✅ รับ name / phone
+    const installationFee = Number(req.body?.installationFee || 0);
+
+    const payload = await buildOrderFromCart(uid, installationFee);
+    if (!payload)
+      return res
+        .status(400)
+        .json({ error: true, message: "Cart empty or invalid" });
+
     const { name, phone } = req.body;
-    if (typeof name !== "string" || typeof phone !== "string" || !name.trim() || !phone.trim()) {
-      return res.status(400).json({ error: true, message: "Name and phone are required" });
+    if (
+      typeof name !== "string" ||
+      typeof phone !== "string" ||
+      !name.trim() ||
+      !phone.trim()
+    ) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Name and phone are required" });
     }
+
     payload.name = name.trim();
     payload.phone = phone.trim();
 
-    // ✅ ส่วนลด
-    const discountCode = (req.body?.discountCode || req.body?.discount || "").trim();
+    const discountCode = (req.body?.discountCode || "").trim();
     if (discountCode) {
       try {
-        const { amount, code } = await validateAndComputeDiscount(uid, payload.subtotalAmount, discountCode);
+        const { amount, code } = await validateAndComputeDiscount(
+          uid,
+          payload.subtotalAmount,
+          discountCode
+        );
         payload.discountAmount = amount;
         payload.discountCode = code;
       } catch (e) {
@@ -152,21 +178,23 @@ router.post("/", async (req, res, next) => {
             error: true,
             code: e.code || "DISCOUNT_INVALID",
             message: e.message,
-            ...(e.minOrderAmount ? { minOrderAmount: e.minOrderAmount } : {})
+            ...(e.minOrderAmount
+              ? { minOrderAmount: e.minOrderAmount }
+              : {}),
           });
         }
         throw e;
       }
     }
 
-    // ✅ Shipping address (optional)
     const ship = req.body?.shipping || {};
-    if (ship && typeof ship === 'object') {
+    if (ship && typeof ship === "object") {
       payload.shipping = {
         ...payload.shipping,
         address: ship.address ?? payload.shipping.address,
         trackingNumber: ship.trackingNumber ?? payload.shipping.trackingNumber,
-        deliveryStatus: ship.deliveryStatus ?? payload.shipping.deliveryStatus,
+        deliveryStatus:
+          ship.deliveryStatus ?? payload.shipping.deliveryStatus,
       };
     }
 
@@ -182,7 +210,9 @@ router.post("/", async (req, res, next) => {
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
 
     res.status(201).json({ success: true, item: created });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 // ✅ GET /api/v1/mongo/orders/latest
