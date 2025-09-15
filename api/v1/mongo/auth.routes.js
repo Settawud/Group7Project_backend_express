@@ -1,6 +1,16 @@
 import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
-import { register, login, logout, logoutAll, refresh, passwordForgot, passwordReset, verifyEmailRequest, verifyEmailConfirm } from "./controllers/user.controller.js";
+import {
+  register,
+  login,
+  logout,
+  logoutAll,
+  refresh,
+  passwordForgot,
+  passwordReset,
+  verifyEmailRequest,
+  verifyEmailConfirm,
+} from "./controllers/user.controller.js";
 
 const router = express.Router();
 

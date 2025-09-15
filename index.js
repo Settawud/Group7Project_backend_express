@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import cors from "cors";
 import apiRoutes from "./api/v1/routes.js";
-import limiter from "./middleware/rateLimiter.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 
@@ -42,7 +41,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(limiter);
 app.use(express.json());
 app.use(cookieParser());
 // Centralized routes
