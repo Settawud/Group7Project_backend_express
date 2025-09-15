@@ -130,8 +130,17 @@ router.post("/", async (req, res, next) => {
     const uid = new mongoose.Types.ObjectId(req.user.id);
     const payload = await buildOrderFromCart(uid);
     if (!payload) return res.status(400).json({ error: true, message: "Cart empty or invalid" });
+
+    // ✅ รับ name / phone
+    const { name, phone } = req.body;
+    if (typeof name !== "string" || typeof phone !== "string" || !name.trim() || !phone.trim()) {
+      return res.status(400).json({ error: true, message: "Name and phone are required" });
+    }
+    payload.name = name.trim();
+    payload.phone = phone.trim();
+
+    // ✅ ส่วนลด
     const discountCode = (req.body?.discountCode || req.body?.discount || "").trim();
-    // If user provided a discount code, validate and compute amount
     if (discountCode) {
       try {
         const { amount, code } = await validateAndComputeDiscount(uid, payload.subtotalAmount, discountCode);
@@ -139,12 +148,18 @@ router.post("/", async (req, res, next) => {
         payload.discountCode = code;
       } catch (e) {
         if (e?.statusCode === 400) {
-          return res.status(400).json({ error: true, code: e.code || "DISCOUNT_INVALID", message: e.message, ...(e.minOrderAmount ? { minOrderAmount: e.minOrderAmount } : {}) });
+          return res.status(400).json({
+            error: true,
+            code: e.code || "DISCOUNT_INVALID",
+            message: e.message,
+            ...(e.minOrderAmount ? { minOrderAmount: e.minOrderAmount } : {})
+          });
         }
         throw e;
       }
     }
-    // Optional shipping override from body
+
+    // ✅ Shipping address (optional)
     const ship = req.body?.shipping || {};
     if (ship && typeof ship === 'object') {
       payload.shipping = {
@@ -154,16 +169,18 @@ router.post("/", async (req, res, next) => {
         deliveryStatus: ship.deliveryStatus ?? payload.shipping.deliveryStatus,
       };
     }
+
     const created = await Order.create(payload);
-    // If discount was applied successfully, increase usedCount using normalized code
+
     if (payload.discountCode) {
       await UserDiscount.updateOne(
         { user_id: uid, code: payload.discountCode },
         { $inc: { usedCount: 1 } }
       );
     }
-    // Clear cart
+
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
+
     res.status(201).json({ success: true, item: created });
   } catch (err) { next(err); }
 });

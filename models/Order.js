@@ -17,6 +17,8 @@ const orderItemSchema = new Schema({
 
 // The main Order schema
 const orderSchema = new Schema({
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
     orderNumber: { type: String, required: true, unique: true },
     orderStatus: { type: String, enum: ['Pending', 'Shipped', 'Delivered'], required: true, default: 'Pending' },
