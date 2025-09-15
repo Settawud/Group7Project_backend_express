@@ -432,3 +432,4 @@ export async function popularProducts(req, res, next) {
     return res.json({ success: true, total, count: items.length, items, offset, limit, minAvg });
   } catch (err) { next(err); }
 }
+

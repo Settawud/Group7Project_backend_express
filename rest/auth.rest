@@ -33,11 +33,11 @@ POST {{base}}/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
-  "firstName": "Admin",
-  "lastName": "User",
-  "email": "admin2@example.com",
+  "firstName": "nice",
+  "lastName": "nice",
+  "email": "niceadmin@example.com",
   "phone": "0900000000",
-  "password": "Admin#123",
+  "password": "123456",
   "role": "admin",
   "adminSecret": "a0f05e5f316daf995aff631d4dadb866f24ae230cd72f1a69eef2e660f69efc406318783d9275d5d765e5fb9204d8d5a62ff73ebfce1a84f28f2b7122c125af0"
 }

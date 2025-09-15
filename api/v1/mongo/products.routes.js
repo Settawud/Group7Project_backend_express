@@ -169,4 +169,64 @@ router.delete(
   deleteVariantImage
 );
 
+// PATCH /api/v1/mongo/products/:productId/images
+router.patch(
+  "/:productId/images",
+  jwtBearer,
+  requireRole("admin"),
+  requireCloudinaryConfigured,
+  upload.array("images", 10), // This endpoint can accept multiple new files
+  async (req, res, next) => {
+    try {
+      const { productId } = req.params;
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: true, message: "Product not found" });
+      }
+
+      // 1. Get the list of public IDs from the frontend
+      const currentPublicIds = req.body.currentPublicIds || [];
+      
+      // 2. Identify new images to upload
+      const uploadedFiles = normalizeImages(req.files).map(toImageObject);
+      
+      // 3. Identify images to delete
+      const existingImages = normalizeImages(product.thumbnails).map(toImageObject);
+      const toDelete = existingImages.filter(
+        (img) => !currentPublicIds.includes(img.publicId)
+      );
+
+      // 4. Perform deletions on Cloudinary
+      for (const img of toDelete) {
+        try {
+          await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" });
+        } catch (err) {
+          // Log the error but continue to update the database
+          console.error("Cloudinary deletion failed:", err);
+        }
+      }
+
+      // 5. Update the product's thumbnails
+      const updatedThumbnails = [
+        ...existingImages.filter(img => currentPublicIds.includes(img.publicId)),
+        ...uploadedFiles
+      ];
+      product.thumbnails = updatedThumbnails;
+      
+      await product.save();
+      
+      return res.status(200).json({
+        success: true,
+        message: "Thumbnails updated successfully",
+        thumbnails: product.thumbnails,
+      });
+    } catch (err) {
+      if (err?.message === "Invalid file type") {
+        return res.status(400).json({ error: true, message: "Only JPG/PNG/WebP images are allowed" });
+      }
+      next(err);
+    }
+  }
+);
+
 export default router;

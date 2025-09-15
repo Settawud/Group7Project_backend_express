@@ -42,7 +42,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(limiter);
+//app.use(limiter);
 app.use(express.json());
 app.use(cookieParser());
 // Centralized routes
