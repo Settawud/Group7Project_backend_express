@@ -168,6 +168,31 @@ router.post("/", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ✅ GET /api/v1/mongo/orders/latest
+// คืนออเดอร์ล่าสุดของผู้ใช้ที่ล็อกอินอยู่
+router.get("/latest", async (req, res, next) => {
+  try {
+    const uid = new mongoose.Types.ObjectId(req.user.id);
+
+    // รองรับการกรอง status ผ่าน query string เช่น /orders/latest?status=Delivered
+    const { status } = req.query;
+    const filter = { userId: uid };
+    if (status) filter.orderStatus = status;
+
+    const latestOrder = await Order.findOne(filter)
+      .sort({ createdAt: -1, _id: -1 }) // ใหม่สุดก่อน
+      .lean();
+
+    if (!latestOrder) {
+      return res.status(404).json({ error: true, message: "No orders found" });
+    }
+
+    res.json({ success: true, item: latestOrder });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/mongo/orders/:orderId
 router.get("/:orderId", async (req, res, next) => {
   try {

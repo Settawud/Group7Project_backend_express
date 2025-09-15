@@ -1,81 +1,130 @@
 @base = http://localhost:4000
+@baseUrl = {{base}}/api/v1/mongo
 @ts = {{$timestamp}}
-# backendGroup7/rest/orders.rest
 
-### Login user
+# ==========================================
+# Orders REST Suite (VS Code REST Client)
+# เงื่อนไข:
+# 1) Backend รันอยู่ที่ {{base}}
+# 2) ตั้งค่า userEmail / userPassword ให้ตรงกับระบบจริง
+# 3) productId / variantId ต้องมีอยู่จริง
+# ==========================================
+
+# ---------- Variables you may need to change ----------
+@userEmail = ada.1757649351@example.com
+@userPassword = secret123
+@productId = 68c39606f0b03d45526fd1c6
+@variantId = 68c39606f0b03d45526fd1c7
+# ------------------------------------------------------
+
+### Health (optional)
+GET {{base}}/health/db
+
+### 1) Login -> รับ token
 # @name login
-POST {{base}}/api/v1/mongo/auth/login
-# ================= Variables =================
-# ⚠️ เปลี่ยนค่าตัวแปรให้ตรงกับข้อมูลของคุณ
-#
-# @token: Bearer token ของผู้ใช้ที่เป็นเจ้าของ Order
-# @orderId: ID ของ Order ที่ต้องการทดสอบ (หาได้จากฐานข้อมูล MongoDB)
-#
-@baseUrl = http://localhost:4000/api/v1/mongo
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2Njg1YjU2YjQyZjQxY2Q3OTY4YjI5M2MiLCJlbWFpbCI6Im5ldy11c2VyLTFAZXhhbXBsZS5jb20iLCJuYW1lIjoiSm9obiBEb2UiLCJyb2xlIjoidXNlciIsInN2IjowLCJpYXQiOjE3MTk5MDk3NDAsImV4cCI6MTcyMDUxNDU0MH0.V1_f5h-s-g-g-g-g-g-g-g-g-g-g-g-g-g-g-g-g
-@orderId = 6685b5a042f41cd7968b294a
-
-###
-# [SUCCESS] อัปเดตสถานะการจัดส่งของ Order
-#
-# อัปเดตที่อยู่, tracking number, และเปลี่ยนสถานะเป็น "Shipped"
-# เซิร์ฟเวอร์จะตั้งค่า `shippedAt` และ `orderStatus` ให้ตรงกันโดยอัตโนมัติ
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
-Authorization: Bearer {{token}}
 
 {
-  "email": "ada.1757649351@example.com",
-  "password": "secret123"
-  "address": "123/456 New Address, Bangkok, 10110",
-  "trackingNumber": "TH1234567890",
-  "deliveryStatus": "Shipped"
+  "email": "{{userEmail}}",
+  "password": "{{userPassword}}"
 }
 
 ###
 @token = {{login.response.body.token}}
 
-### Orders: list
-GET {{base}}/api/v1/mongo/orders
-# [SUCCESS] อัปเดตสถานะเป็น "จัดส่งสำเร็จ" (Delivered)
-#
-# เซิร์ฟเวอร์จะตั้งค่า `deliveredAt` และ `orderStatus` ให้ตรงกัน
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
-Content-Type: application/json
+### 2) เพิ่มสินค้าลงตะกร้า
+# @name addToCart
+POST {{baseUrl}}/cart/items
 Authorization: Bearer {{token}}
+Content-Type: application/json
 
-### Orders: create from cart (optional discountCode)
-POST {{base}}/api/v1/mongo/orders
 {
-  "deliveryStatus": "Delivered"
+  "productId": "{{productId}}",
+  "variantId": "{{variantId}}",
+  "quantity": 1
 }
 
-###
-# [FAIL] พยายามอัปเดตด้วยสถานะที่ไม่ถูกต้อง
-#
-# คาดหวัง HTTP 400 Bad Request
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
-Content-Type: application/json
+### 3) ตรวจสอบสินค้าในตะกร้า
+GET {{baseUrl}}/cart
+Authorization: Bearer {{token}}
+
+### 4) สร้าง Order จากตะกร้า (รองรับ discountCode)
+# @name createOrder
+POST {{baseUrl}}/orders
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "discountCode": "",
-  "shipping": 
-  { "address": "123 Test Rd" }
+  "shipping": {
+    "address": "123 Main St, Bangkok, 10110"
+  }
+}
+
+###
+@orderId = {{createOrder.response.body.item._id}}
+
+### 5) ดูรายการ Order ของผู้ใช้
+GET {{baseUrl}}/orders
+Authorization: Bearer {{token}}
+
+### 6) ดูรายละเอียด Order ตาม ID
+GET {{baseUrl}}/orders/{{orderId}}
+Authorization: Bearer {{token}}
+
+# ============== NEW: Latest Order =====================
+
+### 7) ออเดอร์ล่าสุดของผู้ใช้ที่ล็อกอิน
+GET {{baseUrl}}/orders/latest
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGMzOTljN2I2YTk1ZmI2NjZkODk5YTYiLCJlbWFpbCI6ImFkYS4xNzU3NjQ5MzUxQGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInJvbGUiOiJ1c2VyIiwic3YiOjAsImlhdCI6MTc1NzkxMTQ0NSwiZXhwIjoxNzU4NTE2MjQ1fQ.HtSuKThH3WZ0Dj84gfEcJ4d_CESsO3rirJ-yvwCmY8A
+
+### 8) ออเดอร์ล่าสุดแบบกรองสถานะ (เช่น Delivered)
+GET {{baseUrl}}/orders/latest?status=Shipped
+
+
+# ============== Shipping Updates ======================
+
+### 9) [SUCCESS] เปลี่ยนสถานะเป็น Shipped + ใส่ tracking
+PATCH {{baseUrl}}/orders/{{orderId}}/shipping
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "address": "456 New Address, Bangkok, 10220",
+  "trackingNumber": "TH1234567890",
+  "deliveryStatus": "Shipped"
+}
+
+### 10) [SUCCESS] เปลี่ยนสถานะเป็น Delivered
+PATCH {{baseUrl}}/orders/{{orderId}}/shipping
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "deliveryStatus": "Delivered"
+}
+
+### 11) [FAIL: 400] ส่งสถานะที่ไม่รองรับ
+PATCH {{baseUrl}}/orders/{{orderId}}/shipping
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
   "deliveryStatus": "Returning"
 }
 
-### Orders: list again
-GET {{base}}/api/v1/mongo/orders
-###
-# [FAIL] พยายามอัปเดต Order ID ที่ไม่มีอยู่จริง
-#
-# คาดหวัง HTTP 404 Not Found
+### 12) [FAIL: 404] ใช้ Order ID ที่ไม่มีอยู่จริง
 PATCH {{baseUrl}}/orders/6153a0b4c3a5e6a8b3c4d5e6/shipping
-Content-Type: application/json
 Authorization: Bearer {{token}}
+Content-Type: application/json
 
 {
   "deliveryStatus": "Shipped"
 }
+
+# ============== (Optional) Admin latest by user =======
+# ต้องมี route /admin/orders/latest + requireRole("admin")
+# @adminUserId = 66aabbccddeeff0011223344
+# GET {{baseUrl}}/admin/orders/latest?userId={{adminUserId}}
+# Authorization: Bearer {{token}}
