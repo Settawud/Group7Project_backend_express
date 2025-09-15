@@ -100,7 +100,7 @@ export async function listProducts(req, res, next) {
       }
     }
 
-    const limit = 20;
+    const limit = 9;
     const skip = (parseInt(page) - 1) * limit;
 
     const [items, total] = await Promise.all([

@@ -5,6 +5,8 @@ import { District } from "../../../../models/District.js";
 import { Subdistrict } from "../../../../models/Subdistrict.js";
 import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
+import sendEmail from "../../../../utils/sendEmails.js";
+
 import crypto from "crypto";
 import mongoose from "mongoose";
 
@@ -239,7 +241,36 @@ export const passwordForgot = async (req, res, next) => {
       user.resetTokenHash = sha256(raw);
       user.resetTokenExpires = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour
       await user.save();
-      // In production: send email with reset link containing `raw` token
+
+      // --- SEND REAL EMAIL ---
+      try {
+        const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset?token=${raw}&email=${encodeURIComponent(user.email)}`;
+        const htmlMessage = `
+          <p>You are receiving this email because you (or someone else) has requested the reset of a password for your account.</p>
+          <p>Please click on the following link, or paste it into your browser to complete the process:</p>
+          <p><a href="${resetURL}" target="_blank">${resetURL}</a></p>
+          <p>This link will expire in 1 hour.</p>
+          <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+        `;
+        const textMessage = `You are receiving this email because you (or someone else) has requested the reset of a password for your account.
+Please copy and paste the following link into your browser to complete the process:
+${resetURL}
+
+This link will expire in 1 hour.
+If you did not request this, please ignore this email and your password will remain unchanged.`;
+
+        await sendEmail({
+          email: user.email,
+          subject: 'Password Reset Request',
+          message: textMessage,
+          html: htmlMessage,
+        });
+      } catch (emailError) {
+        console.error("Failed to send password reset email:", emailError);
+        user.resetTokenHash = null;
+        user.resetTokenExpires = null;
+        await user.save();
+      }
       return res.json({ error: false, message: "If that email exists, a reset link was sent.", token: process.env.NODE_ENV === "production" ? undefined : raw });
     }
     return res.json({ error: false, message: "If that email exists, a reset link was sent." });
@@ -286,7 +317,29 @@ export const verifyEmailRequest = async (req, res, next) => {
     user.emailVerifyTokenHash = sha256(raw);
     user.emailVerifyTokenExpires = new Date(Date.now() + (24 * 60 * 60 * 1000)); // 24h
     await user.save();
-    // In production send email; in dev, return token
+
+    // --- SEND REAL EMAIL ---
+    try {
+      const verifyURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${raw}&email=${encodeURIComponent(user.email)}`;
+      const htmlMessage = `
+        <p>Thank you for registering! Please verify your email address by clicking the link below:</p>
+        <p><a href="${verifyURL}" target="_blank">${verifyURL}</a></p>
+      `;
+      const textMessage = `Thank you for registering! Please verify your email address by clicking the link below:
+${verifyURL}`;
+
+      await sendEmail({
+        email: user.email,
+        subject: 'Verify Your Email Address',
+        message: textMessage,
+        html: htmlMessage,
+      });
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+      user.emailVerifyTokenHash = null;
+      user.emailVerifyTokenExpires = null;
+      await user.save();
+    }
     return res.json({ error: false, message: "Verification email sent", token: process.env.NODE_ENV === "production" ? undefined : raw });
   } catch (err) { next(err); }
 };

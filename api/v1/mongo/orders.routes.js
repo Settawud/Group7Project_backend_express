@@ -56,14 +56,12 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
     amount = Number(disc.value || 0);
   }
   if (!Number.isFinite(amount) || amount <= 0) amount = 0;
-  amount = Math.min(amount, subtotal); // never exceed subtotal
+  amount = Math.min(amount, subtotal);
   return { amount, code: norm };
 }
 
 
-const buildOrderFromCart = async (userId) => {
-  const { name, phone } = req.body
-
+const buildOrderFromCart = async (userId, installationFee = 0) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || !cart.items.length) return null;
 
@@ -95,17 +93,27 @@ const buildOrderFromCart = async (userId) => {
         price: v.price,
         trial: !!v.trial,
         variantOption: colorName,
-        image: (v.image?.url || "") || pickFirstImageUrl(p.images) || pickFirstImageUrl(p.thumbnails) || "",
+        image:
+          (v.image?.url || "") ||
+          pickFirstImageUrl(p.images) ||
+          pickFirstImageUrl(p.thumbnails) ||
+          "",
       },
     });
   }
   if (!items.length) return null;
 
-  const subtotal = items.reduce((sum, it) => sum + it.variant.price * it.variant.quantity, 0);
+  const subtotal = items.reduce(
+    (sum, it) => sum + it.variant.price * it.variant.quantity,
+    0
+  );
+
   const discount = 0;
-  const installationFee = 0;
   const total = subtotal - discount + installationFee;
-  const orderNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+
+  const orderNumber = `INV-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 6)}`;
 
   return {
     userId,
@@ -113,7 +121,7 @@ const buildOrderFromCart = async (userId) => {
     orderStatus: "Pending",
     subtotalAmount: subtotal,
     discountAmount: discount,
-    installationFee,
+    installationFee: installationFee,
     items,
     shipping: {},
   };
@@ -132,44 +140,106 @@ router.get("/", async (req, res, next) => {
 router.post("/", async (req, res, next) => {
   try {
     const uid = new mongoose.Types.ObjectId(req.user.id);
-    const payload = await buildOrderFromCart(uid);
-    if (!payload) return res.status(400).json({ error: true, message: "Cart empty or invalid" });
-    const discountCode = (req.body?.discountCode || req.body?.discount || "").trim();
-    // If user provided a discount code, validate and compute amount
+
+    const installationFee = Number(req.body?.installationFee || 0);
+
+    const payload = await buildOrderFromCart(uid, installationFee);
+    if (!payload)
+      return res
+        .status(400)
+        .json({ error: true, message: "Cart empty or invalid" });
+
+    const { name, phone } = req.body;
+    if (
+      typeof name !== "string" ||
+      typeof phone !== "string" ||
+      !name.trim() ||
+      !phone.trim()
+    ) {
+      return res
+        .status(400)
+        .json({ error: true, message: "Name and phone are required" });
+    }
+
+    payload.name = name.trim();
+    payload.phone = phone.trim();
+
+    const discountCode = (req.body?.discountCode || "").trim();
     if (discountCode) {
       try {
-        const { amount, code } = await validateAndComputeDiscount(uid, payload.subtotalAmount, discountCode);
+        const { amount, code } = await validateAndComputeDiscount(
+          uid,
+          payload.subtotalAmount,
+          discountCode
+        );
         payload.discountAmount = amount;
         payload.discountCode = code;
       } catch (e) {
         if (e?.statusCode === 400) {
-          return res.status(400).json({ error: true, code: e.code || "DISCOUNT_INVALID", message: e.message, ...(e.minOrderAmount ? { minOrderAmount: e.minOrderAmount } : {}) });
+          return res.status(400).json({
+            error: true,
+            code: e.code || "DISCOUNT_INVALID",
+            message: e.message,
+            ...(e.minOrderAmount
+              ? { minOrderAmount: e.minOrderAmount }
+              : {}),
+          });
         }
         throw e;
       }
     }
-    // Optional shipping override from body
+
     const ship = req.body?.shipping || {};
-    if (ship && typeof ship === 'object') {
+    if (ship && typeof ship === "object") {
       payload.shipping = {
         ...payload.shipping,
         address: ship.address ?? payload.shipping.address,
         trackingNumber: ship.trackingNumber ?? payload.shipping.trackingNumber,
-        deliveryStatus: ship.deliveryStatus ?? payload.shipping.deliveryStatus,
+        deliveryStatus:
+          ship.deliveryStatus ?? payload.shipping.deliveryStatus,
       };
     }
+
     const created = await Order.create(payload);
-    // If discount was applied successfully, increase usedCount using normalized code
+
     if (payload.discountCode) {
       await UserDiscount.updateOne(
         { user_id: uid, code: payload.discountCode },
         { $inc: { usedCount: 1 } }
       );
     }
-    // Clear cart
+
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
+
     res.status(201).json({ success: true, item: created });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ✅ GET /api/v1/mongo/orders/latest
+// คืนออเดอร์ล่าสุดของผู้ใช้ที่ล็อกอินอยู่
+router.get("/latest", async (req, res, next) => {
+  try {
+    const uid = new mongoose.Types.ObjectId(req.user.id);
+
+    // รองรับการกรอง status ผ่าน query string เช่น /orders/latest?status=Delivered
+    const { status } = req.query;
+    const filter = { userId: uid };
+    if (status) filter.orderStatus = status;
+
+    const latestOrder = await Order.findOne(filter)
+      .sort({ createdAt: -1, _id: -1 }) // ใหม่สุดก่อน
+      .lean();
+
+    if (!latestOrder) {
+      return res.status(404).json({ error: true, message: "No orders found" });
+    }
+
+    res.json({ success: true, item: latestOrder });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // GET /api/v1/mongo/orders/:orderId
