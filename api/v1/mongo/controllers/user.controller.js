@@ -5,7 +5,7 @@ import { District } from "../../../../models/District.js";
 import { Subdistrict } from "../../../../models/Subdistrict.js";
 import { Cart } from "../../../../models/Cart.js";
 import jwt from "jsonwebtoken";
-import sendEmail from "../../../../utils/sendEmail.js";
+import sendEmail from "../../../../utils/sendEmails.js";
 
 import crypto from "crypto";
 import mongoose from "mongoose";
@@ -244,7 +244,7 @@ export const passwordForgot = async (req, res, next) => {
 
       // --- SEND REAL EMAIL ---
       try {
-        const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/resetg?token=${raw}&email=${encodeURIComponent(user.email)}`;
+        const resetURL = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset?token=${raw}&email=${encodeURIComponent(user.email)}`;
         const htmlMessage = `
           <p>You are receiving this email because you (or someone else) has requested the reset of a password for your account.</p>
           <p>Please click on the following link, or paste it into your browser to complete the process:</p>
