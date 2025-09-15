@@ -1,6 +1,7 @@
 import express from "express";
 import jwtBearer from "../../../middleware/jwtBearer.js";
 import { userDiscounts as UserDiscount } from "../../../models/Discounts.js";
+import requireRole from "../../../middleware/requireRole.js";
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST /api/v1/mongo/discounts
-router.post("/", async (req, res, next) => {
+router.post("/", requireRole("admin"), async (req, res, next) => {
   try {
     const body = req.body || {};
     const required = ["code", "type", "value", "startDate", "endDate"];

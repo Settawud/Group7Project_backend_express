@@ -1,130 +1,34 @@
 @base = http://localhost:4000
-@baseUrl = {{base}}/api/v1/mongo
 @ts = {{$timestamp}}
 
-# ==========================================
-# Orders REST Suite (VS Code REST Client)
-# เงื่อนไข:
-# 1) Backend รันอยู่ที่ {{base}}
-# 2) ตั้งค่า userEmail / userPassword ให้ตรงกับระบบจริง
-# 3) productId / variantId ต้องมีอยู่จริง
-# ==========================================
-
-# ---------- Variables you may need to change ----------
-@userEmail = ada.1757649351@example.com
-@userPassword = secret123
-@productId = 68c39606f0b03d45526fd1c6
-@variantId = 68c39606f0b03d45526fd1c7
-# ------------------------------------------------------
-
-### Health (optional)
-GET {{base}}/health/db
-
-### 1) Login -> รับ token
+### Login user
 # @name login
-POST {{baseUrl}}/auth/login
+POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "{{userEmail}}",
-  "password": "{{userPassword}}"
+  "email": "ada.1757649351@example.com",
+  "password": "secret123"
 }
 
 ###
 @token = {{login.response.body.token}}
 
-### 2) เพิ่มสินค้าลงตะกร้า
-# @name addToCart
-POST {{baseUrl}}/cart/items
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "productId": "{{productId}}",
-  "variantId": "{{variantId}}",
-  "quantity": 1
-}
-
-### 3) ตรวจสอบสินค้าในตะกร้า
-GET {{baseUrl}}/cart
+### Orders: list
+GET {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
 
-### 4) สร้าง Order จากตะกร้า (รองรับ discountCode)
-# @name createOrder
-POST {{baseUrl}}/orders
+### Orders: create from cart (optional discountCode)
+POST {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "discountCode": "",
-  "shipping": {
-    "address": "123 Main St, Bangkok, 10110"
-  }
+  "shipping": 
+  { "address": "123 Test Rd" }
 }
 
-###
-@orderId = {{createOrder.response.body.item._id}}
-
-### 5) ดูรายการ Order ของผู้ใช้
-GET {{baseUrl}}/orders
+### Orders: list again
+GET {{base}}/api/v1/mongo/orders
 Authorization: Bearer {{token}}
-
-### 6) ดูรายละเอียด Order ตาม ID
-GET {{baseUrl}}/orders/{{orderId}}
-Authorization: Bearer {{token}}
-
-# ============== NEW: Latest Order =====================
-
-### 7) ออเดอร์ล่าสุดของผู้ใช้ที่ล็อกอิน
-GET {{baseUrl}}/orders/latest
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGMzOTljN2I2YTk1ZmI2NjZkODk5YTYiLCJlbWFpbCI6ImFkYS4xNzU3NjQ5MzUxQGV4YW1wbGUuY29tIiwibmFtZSI6IkFkYSBMb3ZlbGFjZSIsInJvbGUiOiJ1c2VyIiwic3YiOjAsImlhdCI6MTc1NzkxMTQ0NSwiZXhwIjoxNzU4NTE2MjQ1fQ.HtSuKThH3WZ0Dj84gfEcJ4d_CESsO3rirJ-yvwCmY8A
-
-### 8) ออเดอร์ล่าสุดแบบกรองสถานะ (เช่น Delivered)
-GET {{baseUrl}}/orders/latest?status=Shipped
-
-
-# ============== Shipping Updates ======================
-
-### 9) [SUCCESS] เปลี่ยนสถานะเป็น Shipped + ใส่ tracking
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "address": "456 New Address, Bangkok, 10220",
-  "trackingNumber": "TH1234567890",
-  "deliveryStatus": "Shipped"
-}
-
-### 10) [SUCCESS] เปลี่ยนสถานะเป็น Delivered
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "deliveryStatus": "Delivered"
-}
-
-### 11) [FAIL: 400] ส่งสถานะที่ไม่รองรับ
-PATCH {{baseUrl}}/orders/{{orderId}}/shipping
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "deliveryStatus": "Returning"
-}
-
-### 12) [FAIL: 404] ใช้ Order ID ที่ไม่มีอยู่จริง
-PATCH {{baseUrl}}/orders/6153a0b4c3a5e6a8b3c4d5e6/shipping
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "deliveryStatus": "Shipped"
-}
-
-# ============== (Optional) Admin latest by user =======
-# ต้องมี route /admin/orders/latest + requireRole("admin")
-# @adminUserId = 66aabbccddeeff0011223344
-# GET {{baseUrl}}/admin/orders/latest?userId={{adminUserId}}
-# Authorization: Bearer {{token}}
