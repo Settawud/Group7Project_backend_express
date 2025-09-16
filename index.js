@@ -5,6 +5,7 @@ import cors from "cors";
 import apiRoutes from "./api/v1/routes.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
+import rateLimiter from "./middleware/rateLimiter.js";
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.set("trust proxy", 1);
 
 // Global middlewares
 app.use(helmet());
+app.use(rateLimiter);
 
 // Build CORS origin list from env, fallback to common dev/prod URLs
 const defaultOrigins = [
