@@ -31,7 +31,6 @@ export async function listProducts(req, res, next) {
 
     const match = {};
 
-    // Category filter
     if (category) {
       const raw = String(category || "").trim().toLowerCase();
       const base = raw.split("(")[0].trim();
@@ -57,12 +56,6 @@ export async function listProducts(req, res, next) {
       }
     }
 
-    // Availability filter
-    if (availability === "instock") {
-      match["variants.quantityInStock"] = { $gt: 0 };
-    }
-
-    // Search
     if (search.trim()) {
       const regex = new RegExp(search.trim(), "i");
       match.$or = [
@@ -72,7 +65,23 @@ export async function listProducts(req, res, next) {
       ];
     }
 
-    // Aggregation
+    if (availability === "instock") {
+      match.$expr = {
+        $gt: [
+          {
+            $size: {
+              $filter: {
+                input: "$variants",
+                as: "v",
+                cond: { $gt: ["$$v.quantityInStock", 0] }
+              }
+            }
+          },
+          0
+        ]
+      };
+    }
+
     const limit = 9;
     const skip = (parseInt(page) - 1) * limit;
 
@@ -81,13 +90,24 @@ export async function listProducts(req, res, next) {
       {
         $addFields: {
           minPrice: {
-            $min: "$variants.price"
+            $min: {
+              $map: {
+                input: {
+                  $filter: {
+                    input: "$variants",
+                    as: "v",
+                    cond: { $eq: ["$$v.trial", false] }
+                  }
+                },
+                as: "v",
+                in: "$$v.price"
+              }
+            }
           }
         }
-      },
+      }
     ];
 
-    // Price filter
     const priceCond = {};
     const min = parseFloat(minPrice);
     const max = parseFloat(maxPrice);
@@ -101,7 +121,6 @@ export async function listProducts(req, res, next) {
       });
     }
 
-    // Sorting
     const sortStage = {};
     if (sort) {
       const [field, dir] = sort.split(":");
@@ -110,12 +129,10 @@ export async function listProducts(req, res, next) {
     }
     pipeline.push({ $sort: Object.keys(sortStage).length ? sortStage : { createdAt: -1 } });
 
-    // Pagination
     const facet = {
       items: [{ $skip: skip }, { $limit: limit }],
       total: [{ $count: "count" }]
     };
-
     pipeline.push({ $facet: facet });
 
     const result = await Product.aggregate(pipeline);
