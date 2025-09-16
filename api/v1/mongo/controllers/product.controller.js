@@ -1,6 +1,7 @@
 import { Product } from "../../../../models/Product.js";
 import { reviews as Review } from "../../../../models/Reviews.js";
 import cloudinary from "../../../../config/cloudinary.js";
+import mongoose from "mongoose";
 
 // Helpers
 const normalizeImages = (arr) => (Array.isArray(arr) ? arr : []);
@@ -139,18 +140,113 @@ export async function createProduct(req, res, next) {
   }
 }
 
+// export async function updateProduct(req, res, next) {
+//   try {
+//     const updated = await Product.findByIdAndUpdate(
+//       req.params.productId,
+//       { $set: req.body || {} },
+//       { new: true, runValidators: true }
+//     );
+//     if (!updated) return res.status(404).json({ error: true, message: "Not found" });
+//     res.json({ success: true, item: updated });
+//   } catch (err) {
+//     next(err);
+//   }
+// }
+
+
 export async function updateProduct(req, res, next) {
-  try {
-    const updated = await Product.findByIdAndUpdate(
-      req.params.productId,
-      { $set: req.body || {} },
-      { new: true, runValidators: true }
-    );
-    if (!updated) return res.status(404).json({ error: true, message: "Not found" });
-    res.json({ success: true, item: updated });
-  } catch (err) {
-    next(err);
-  }
+    try {
+        const { variants, ...productUpdates } = req.body;
+        const productId = req.params.productId;
+
+        // 1. Fetch the product to compare variants
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ error: true, message: "Product not found" });
+        }
+
+        // 2. Handle variants updates and deletions
+        if (variants && Array.isArray(variants)) {
+            const reqVariantIds = variants.filter(v => v._id).map(v => v._id.toString());
+            const databaseVariantIds = product.variants.map(v => v._id.toString());
+            
+            // Variants to delete are those in the database but not in the frontend payload
+            const variantsToDelete = databaseVariantIds.filter(id => !reqVariantIds.includes(id));
+
+            // Create a bulk operation to handle updates, additions, and deletions
+            const bulkOps = [];
+
+            // Deletion step: remove variants that are no longer in the payload
+            if (variantsToDelete.length > 0) {
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: productId },
+                        update: { 
+                            $pull: { 
+                                variants: { 
+                                    _id: { 
+                                        $in: variantsToDelete.map(id => new mongoose.Types.ObjectId(id)) 
+                                    } 
+                                } 
+                            } 
+                        }
+                    }
+                });
+            }
+
+            // Update and addition steps (same as before)
+            const variantsToUpdate = variants.filter(v => v._id);
+            const variantsToAdd = variants.filter(v => !v._id);
+
+            // 1. Bulk update existing variants
+            variantsToUpdate.forEach(variant => {
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: productId, "variants._id": variant._id },
+                        update: {
+                            $set: {
+                                "variants.$.colorId": variant.colorId,
+                                "variants.$.price": variant.price,
+                                "variants.$.quantityInStock": variant.quantityInStock,
+                                "variants.$.trial": variant.trial,
+                                "variants.$.image": variant.image,
+                            }
+                        }
+                    }
+                });
+            });
+
+            // 2. Add new variants
+            if (variantsToAdd.length > 0) {
+                bulkOps.push({
+                    updateOne: {
+                        filter: { _id: productId },
+                        update: { $push: { variants: { $each: variantsToAdd } } }
+                    }
+                });
+            }
+
+            // Execute all bulk operations
+            if (bulkOps.length > 0) {
+                await Product.bulkWrite(bulkOps);
+            }
+        }
+
+        // 3. Update top-level product fields (all except `variants`)
+        await Product.findByIdAndUpdate(productId, { $set: productUpdates });
+        
+        // Finally, fetch the completely updated document to send back to the client
+        const finalProduct = await Product.findById(productId);
+
+        if (!finalProduct) {
+            return res.status(404).json({ error: true, message: "Product not found" });
+        }
+
+        res.json({ success: true, item: finalProduct });
+    } catch (err) {
+        next(err);
+    }
 }
 
 export async function deleteProduct(req, res, next) {
@@ -432,4 +528,69 @@ export async function popularProducts(req, res, next) {
     return res.json({ success: true, total, count: items.length, items, offset, limit, minAvg });
   } catch (err) { next(err); }
 }
+
+
+const toImageObject2 = (it) => {
+    if (it && typeof it === 'object' && (it.path || it.secure_url) && (it.filename || it.public_id)) {
+        return { 
+            url: it.path || it.secure_url, 
+            publicId: it.filename || it.public_id 
+        };
+    }
+    return (typeof it === "string" ? { url: it, publicId: it } : { url: it?.url, publicId: it?.publicId });
+};
+
+
+export async function uploadMultipleProductImages(req, res, next) {
+  
+    try {
+      const { productId } = req.params;
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ error: true, message: "Product not found" });
+      }
+
+      // 1. Get the list of public IDs from the frontend
+      const currentPublicIds = req.body.currentPublicIds || [];
+      
+      // 2. Identify new images to upload
+      const uploadedFiles = normalizeImages(req.files).map(toImageObject2);
+      
+      // 3. Identify images to delete
+      const existingImages = normalizeImages(product.thumbnails).map(toImageObject2);
+      const toDelete = existingImages.filter(
+        (img) => !currentPublicIds.includes(img.publicId)
+      );
+
+      // 4. Perform deletions on Cloudinary
+      for (const img of toDelete) {
+        try {
+          await cloudinary.uploader.destroy(img.publicId, { resource_type: "image" });
+        } catch (err) {
+          // Log the error but continue to update the database
+          console.error("Cloudinary deletion failed:", err);
+        }
+      }
+
+      // 5. Update the product's thumbnails
+      const updatedThumbnails = [
+        ...existingImages.filter(img => currentPublicIds.includes(img.publicId)),
+        ...uploadedFiles
+      ];
+      product.thumbnails = updatedThumbnails;
+      
+      await product.save();
+      
+      return res.status(200).json({
+        success: true,
+        message: "Thumbnails updated successfully",
+        thumbnails: product.thumbnails,
+      });
+    } catch (err) {
+      if (err?.message === "Invalid file type") {
+        return res.status(400).json({ error: true, message: "Only JPG/PNG/WebP images are allowed" });
+      }
+      next(err);
+    }
+  }
 
