@@ -18,103 +18,115 @@ const pickOneUploaded = (fileOrFiles) => {
 
 // Products
 export async function listProducts(req, res, next) {
-   try {
+  try {
     const {
       search = "",
       category,
       minPrice,
       maxPrice,
       sort,
+      availability,
       page = 1,
     } = req.query;
 
-    const filter = {};
+    const match = {};
 
-    // Category synonyms (English/Thai) support
+    // Category filter
     if (category) {
       const raw = String(category || "").trim().toLowerCase();
       const base = raw.split("(")[0].trim();
       const isIn = (arr) => arr.includes(base);
       const groups = {
-        chairs: [
-          "chairs", "chair", "ergonomic chair", "ergonomic chairs",
-          "เก้าอี้", "เก้าอี้เพื่อสุขภาพ"
-        ],
-        tables: [
-          "tables", "table", "desk", "desks", "standing desk", "standing desks",
-          "โต๊ะ", "โต๊ะยืน"
-        ],
-        accessories: [
-          "accessories", "accessory", "อุปกรณ์", "อุปกรณ์เสริม"
-        ],
+        chairs: ["chairs", "chair", "ergonomic chair", "ergonomic chairs", "เก้าอี้", "เก้าอี้เพื่อสุขภาพ"],
+        tables: ["tables", "table", "desk", "desks", "standing desk", "standing desks", "โต๊ะ", "โต๊ะยืน"],
+        accessories: ["accessories", "accessory", "อุปกรณ์", "อุปกรณ์เสริม"],
       };
       let groupKey = null;
-      if (isIn(groups.chairs)) groupKey = 'chairs';
-      else if (isIn(groups.tables)) groupKey = 'tables';
-      else if (isIn(groups.accessories)) groupKey = 'accessories';
+      if (isIn(groups.chairs)) groupKey = "chairs";
+      else if (isIn(groups.tables)) groupKey = "tables";
+      else if (isIn(groups.accessories)) groupKey = "accessories";
 
       if (groupKey) {
-        // Build case-insensitive OR of known aliases so DB can match English or Thai values
         const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const ors = groups[groupKey].map((label) => ({ category: new RegExp(`^${esc(label)}$`, 'i') }));
-        filter.$or = (filter.$or || []).concat(ors);
+        match.$or = groups[groupKey].map((label) => ({
+          category: new RegExp(`^${esc(label)}$`, "i"),
+        }));
       } else {
-        // Fallback: case-insensitive equality on provided string (without parentheses)
         const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        filter.category = new RegExp(`^${esc(base)}$`, 'i');
+        match.category = new RegExp(`^${esc(base)}$`, "i");
       }
     }
 
-    const min = parseFloat(minPrice);
-    const max = parseFloat(maxPrice);
-
-    if (!isNaN(min) || !isNaN(max)) {
-      filter.variants = {
-        $elemMatch: {}
-      };
-      if (!isNaN(min)) filter.variants.$elemMatch.price = { $gte: min };
-      if (!isNaN(max)) {
-        if (!filter.variants.$elemMatch.price) filter.variants.$elemMatch.price = {};
-        filter.variants.$elemMatch.price.$lte = max;
-      }
+    // Availability filter
+    if (availability === "instock") {
+      match["variants.quantityInStock"] = { $gt: 0 };
     }
 
-    const term = search.trim();
-    let query = {};
-    if (term) {
-      query = {
-        $or: [
-          { name: { $regex: term, $options: "i" } },
-          { description: { $regex: term, $options: "i" } },
-          { tags: { $in: [new RegExp(term, "i")] } },
-        ],
-      };
+    // Search
+    if (search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      match.$or = [
+        { name: { $regex: regex } },
+        { description: { $regex: regex } },
+        { tags: { $in: [regex] } },
+      ];
     }
 
-    const finalQuery = term ? { $and: [filter, query] } : filter;
-
-    let sortOption = {};
-    if (sort) {
-      const [field, direction] = sort.split(":");
-      if (field) {
-        sortOption[field] = direction === "desc" ? -1 : 1;
-      }
-    }
-
+    // Aggregation
     const limit = 9;
     const skip = (parseInt(page) - 1) * limit;
 
-    const [items, total] = await Promise.all([
-      Product.find(finalQuery).sort(sortOption).skip(skip).limit(limit).lean(),
-      Product.countDocuments(finalQuery),
-    ]);
+    const pipeline = [
+      { $match: match },
+      {
+        $addFields: {
+          minPrice: {
+            $min: "$variants.price"
+          }
+        }
+      },
+    ];
+
+    // Price filter
+    const priceCond = {};
+    const min = parseFloat(minPrice);
+    const max = parseFloat(maxPrice);
+    if (!isNaN(min)) priceCond.$gte = min;
+    if (!isNaN(max)) priceCond.$lte = max;
+    if (Object.keys(priceCond).length) {
+      pipeline.push({
+        $match: {
+          minPrice: priceCond,
+        }
+      });
+    }
+
+    // Sorting
+    const sortStage = {};
+    if (sort) {
+      const [field, dir] = sort.split(":");
+      if (field === "variants.price") sortStage["minPrice"] = dir === "desc" ? -1 : 1;
+      else if (field === "createdAt") sortStage["createdAt"] = dir === "desc" ? -1 : 1;
+    }
+    pipeline.push({ $sort: Object.keys(sortStage).length ? sortStage : { createdAt: -1 } });
+
+    // Pagination
+    const facet = {
+      items: [{ $skip: skip }, { $limit: limit }],
+      total: [{ $count: "count" }]
+    };
+
+    pipeline.push({ $facet: facet });
+
+    const result = await Product.aggregate(pipeline);
+    const { items, total } = result[0];
 
     res.json({
       success: true,
       count: items.length,
-      total,
+      total: total[0]?.count || 0,
       page: parseInt(page),
-      items,
+      items
     });
   } catch (err) {
     next(err);
