@@ -125,7 +125,7 @@ const buildOrderFromCart = async (userId, installationFee = 0, name, phone) => {
   return {
     userId,
     orderNumber,
-    orderStatus: "Pending",
+    orderStatus: "Processing",
     subtotalAmount: subtotal,
     discountAmount: discount,
     installationFee: installationFee,
@@ -298,14 +298,16 @@ router.patch("/:orderId/shipping", async (req, res, next) => {
       const prev = order.shipping.deliveryStatus;
       order.shipping.deliveryStatus = deliveryStatus;
       // keep orderStatus in sync
-      order.orderStatus = deliveryStatus;
+      order.orderStatus = "Processing";
       const now = new Date();
       if (deliveryStatus === "Shipped" && !order.shipping.shippedAt) {
         order.shipping.shippedAt = now;
+        order.orderStatus = "Shipped"
       }
       if (deliveryStatus === "Delivered") {
         if (!order.shipping.shippedAt) order.shipping.shippedAt = now;
         order.shipping.deliveredAt = now;
+        order.orderStatus = "Complete"
       }
     }
 
