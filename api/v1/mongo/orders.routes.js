@@ -217,7 +217,7 @@ router.post("/", async (req, res, next) => {
     try {
       const user = await User.findById(uid);
       if (user && user.email) {
-        const orderLink = `http://localhost:5173/order-confirm/${created._id}`;
+        const orderLink = `https://group7-project-sprint2.vercel.app/order-confirm/${created._id}`;
         const emailOptions = {
           email: user.email,
           subject: "Your order has been placed!",
