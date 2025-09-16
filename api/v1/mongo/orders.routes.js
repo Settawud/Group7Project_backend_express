@@ -6,6 +6,8 @@ import { Cart } from "../../../models/Cart.js";
 import { Product } from "../../../models/Product.js";
 import { Color } from "../../../models/Color.js";
 import { userDiscounts as UserDiscount } from "../../../models/Discounts.js";
+import { User } from "../../../models/User.js";
+import sendEmail from "../../../utils/sendEmails.js";
 
 const router = express.Router();
 
@@ -61,7 +63,7 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
 }
 
 
-const buildOrderFromCart = async (userId, installationFee = 0) => {
+const buildOrderFromCart = async (userId, installationFee = 0, name, phone) => {
   const cart = await Cart.findOne({ userId });
   if (!cart || !cart.items.length) return null;
 
@@ -143,7 +145,7 @@ router.post("/", async (req, res, next) => {
 
     const installationFee = Number(req.body?.installationFee || 0);
 
-    const payload = await buildOrderFromCart(uid, installationFee);
+    const payload = await buildOrderFromCart(uid, installationFee, req.body.name, req.body.phone);
     if (!payload)
       return res
         .status(400)
@@ -210,6 +212,24 @@ router.post("/", async (req, res, next) => {
     }
 
     await Cart.updateOne({ userId: uid }, { $set: { items: [] } }, { upsert: true });
+
+    // Send email notification
+    try {
+      const user = await User.findById(uid);
+      if (user && user.email) {
+        const orderLink = `http://localhost:5173/order-confirm/${created._id}`;
+        const emailOptions = {
+          email: user.email,
+          subject: "Your order has been placed!",
+          message: `Hi ${user.name}, your order with number ${created.orderNumber} has been successfully placed. You can view your order here: ${orderLink}`,
+          html: `<p>Hi ${user.name},</p><p>Your order with number <strong>${created.orderNumber}</strong> has been successfully placed.</p><p><a href="${orderLink}">View your order summary here</a></p>`
+        };
+        await sendEmail(emailOptions);
+      }
+    } catch (emailError) {
+      console.error("Failed to send order confirmation email:", emailError);
+      // Do not block the response for email failure
+    }
 
     res.status(201).json({ success: true, item: created });
   } catch (err) {
