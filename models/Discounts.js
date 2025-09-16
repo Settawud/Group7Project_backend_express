@@ -2,7 +2,7 @@ import { Schema, model } from "mongoose";
 
 const userDiscountSchema = new Schema(
   {
-    user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    user_id: { type: Schema.Types.ObjectId, ref: "User", required: false, default: null },
     code: { type: String, required: true },
     description: { type: String },
     type: { type: String, enum: ["percentage", "fixed"], required: true },
@@ -13,10 +13,11 @@ const userDiscountSchema = new Schema(
     usedCount: { type: Number, required: true, default: 0 },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
+    isGlobal: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-userDiscountSchema.index({ user_id: 1, code: 1 }, { unique: true });
+userDiscountSchema.index({ code: 1, user_id: 1 }, { unique: true });
 
 export const userDiscounts = model("userDiscounts", userDiscountSchema);

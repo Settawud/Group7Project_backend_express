@@ -13,4 +13,3 @@ const SubdistrictSchema = new Schema(
 );
 
 export const Subdistrict = model("Subdistrict", SubdistrictSchema);
-

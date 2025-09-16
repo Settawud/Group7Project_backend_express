@@ -26,9 +26,14 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
   if (!code || typeof code !== "string") return { amount: 0, code: "" };
   const now = new Date();
   const norm = code.trim().toUpperCase();
-  const disc =
-    (await UserDiscount.findOne({ user_id: userId, code: norm })) ||
-    (await UserDiscount.findOne({ user_id: userId, code: code.trim() })); // fallback for legacy lowercase codes
+  const disc = await UserDiscount.findOne({
+    code: norm,
+    $or: [
+      { user_id: userId },
+      { isGlobal: true, user_id: null } // Global coupons
+    ]
+  });
+
   if (!disc) {
     throw discountError("DISCOUNT_INVALID", "Invalid discount code");
   }
