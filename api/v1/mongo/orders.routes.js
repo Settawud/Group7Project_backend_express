@@ -26,9 +26,14 @@ async function validateAndComputeDiscount(userId, subtotal, code) {
   if (!code || typeof code !== "string") return { amount: 0, code: "" };
   const now = new Date();
   const norm = code.trim().toUpperCase();
-  const disc =
-    (await UserDiscount.findOne({ user_id: userId, code: norm })) ||
-    (await UserDiscount.findOne({ user_id: userId, code: code.trim() })); // fallback for legacy lowercase codes
+  const disc = await UserDiscount.findOne({
+    code: norm,
+    $or: [
+      { user_id: userId },
+      { isGlobal: true, user_id: null } // Global coupons
+    ]
+  });
+
   if (!disc) {
     throw discountError("DISCOUNT_INVALID", "Invalid discount code");
   }
@@ -120,7 +125,7 @@ const buildOrderFromCart = async (userId, installationFee = 0, name, phone) => {
   return {
     userId,
     orderNumber,
-    orderStatus: "Pending",
+    orderStatus: "Processing",
     subtotalAmount: subtotal,
     discountAmount: discount,
     installationFee: installationFee,
@@ -217,7 +222,7 @@ router.post("/", async (req, res, next) => {
     try {
       const user = await User.findById(uid);
       if (user && user.email) {
-        const orderLink = `http://localhost:5173/order-confirm/${created._id}`;
+        const orderLink = `https://group7-project-sprint2.vercel.app/order-confirm/${created._id}`;
         const emailOptions = {
           email: user.email,
           subject: "Your order has been placed!",
@@ -293,14 +298,16 @@ router.patch("/:orderId/shipping", async (req, res, next) => {
       const prev = order.shipping.deliveryStatus;
       order.shipping.deliveryStatus = deliveryStatus;
       // keep orderStatus in sync
-      order.orderStatus = deliveryStatus;
+      order.orderStatus = "Processing";
       const now = new Date();
       if (deliveryStatus === "Shipped" && !order.shipping.shippedAt) {
         order.shipping.shippedAt = now;
+        order.orderStatus = "Shipped"
       }
       if (deliveryStatus === "Delivered") {
         if (!order.shipping.shippedAt) order.shipping.shippedAt = now;
         order.shipping.deliveredAt = now;
+        order.orderStatus = "Complete"
       }
     }
 

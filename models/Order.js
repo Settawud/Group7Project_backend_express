@@ -21,7 +21,7 @@ const orderSchema = new Schema({
     phone: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
     orderNumber: { type: String, required: true, unique: true },
-    orderStatus: { type: String, enum: ['Pending', 'Shipped', 'Delivered'], required: true, default: 'Pending' },
+    orderStatus: { type: String, enum: ['Processing', 'Shipped', 'Complete'], required: true, default: 'Processing' },
     subtotalAmount: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, required: true, default: 0, min: 0 },
     discountCode: { type: String},

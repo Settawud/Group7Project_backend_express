@@ -33,10 +33,10 @@ POST {{base}}/api/v1/mongo/auth/register
 Content-Type: application/json
 
 {
-  "firstName": "nice",
-  "lastName": "nice",
-  "email": "niceadmin@example.com",
-  "phone": "0900000000",
+  "firstName": "Admin",
+  "lastName": "Admin",
+  "email": "admin@example.com",
+  "phone": "0999999999",
   "password": "123456",
   "role": "admin",
   "adminSecret": "a0f05e5f316daf995aff631d4dadb866f24ae230cd72f1a69eef2e660f69efc406318783d9275d5d765e5fb9204d8d5a62ff73ebfce1a84f28f2b7122c125af0"
@@ -48,8 +48,8 @@ POST {{base}}/api/v1/mongo/auth/login
 Content-Type: application/json
 
 {
-  "email": "admin2@example.com",
-  "password": "Admin#123"
+  "email": "admin@example.com",
+  "password": "123456"
 }
 
 ###

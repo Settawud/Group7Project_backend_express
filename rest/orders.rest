@@ -20,7 +20,7 @@ POST {{base}}/api/v1/mongo/auth/login
 #
 # อัปเดตที่อยู่, tracking number, และเปลี่ยนสถานะเป็น "Shipped"
 # เซิร์ฟเวอร์จะตั้งค่า `shippedAt` และ `orderStatus` ให้ตรงกันโดยอัตโนมัติ
-PATCH {{baseUrl}}/orders/68c7cb92ed3375969995595b/shipping
+PATCH {{baseUrl}}/orders/68c9ac0b414f634cbbfbd4dd/shipping
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGM1ZDNiMTk1MTY3ZGExNTY5NzdmMTEiLCJlbWFpbCI6ImJlc3RAYmVzdC5jb20iLCJuYW1lIjoiYmVzdCBiZXN0Iiwicm9sZSI6InVzZXIiLCJzdiI6MywiaWF0IjoxNzU3OTI4MjM3LCJleHAiOjE3NTg1MzMwMzd9.U-KAz2Y0BoWGJ9IH93ht5aLQmYrKw-ruDNWGN3ahiaA
 
@@ -38,7 +38,7 @@ GET {{base}}/api/v1/mongo/orders
 #
 # เซิร์ฟเวอร์จะตั้งค่า `deliveredAt` และ `orderStatus` ให้ตรงกัน
 ###
-PATCH {{baseUrl}}/orders/68c7cb92ed3375969995595b/shipping
+PATCH {{baseUrl}}/orders/68c9ac0b414f634cbbfbd4dd/shipping
 Content-Type: application/json
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGM1ZDNiMTk1MTY3ZGExNTY5NzdmMTEiLCJlbWFpbCI6ImJlc3RAYmVzdC5jb20iLCJuYW1lIjoiYmVzdCBiZXN0Iiwicm9sZSI6InVzZXIiLCJzdiI6MywiaWF0IjoxNzU3OTI4MjM3LCJleHAiOjE3NTg1MzMwMzd9.U-KAz2Y0BoWGJ9IH93ht5aLQmYrKw-ruDNWGN3ahiaA
 
