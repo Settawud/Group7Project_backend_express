@@ -11,11 +11,52 @@ router.use(jwtBearer);
 
 // GET /api/v1/mongo/cart
 
+// router.get("/", async (req, res, next) => {
+//   try {
+//     const cart = await Cart.findOne({ userId: req.user.id });
+//     res.status(200).json({ success: true, cart });
+//   } catch (err) { next(err); }
+// });
+
 router.get("/", async (req, res, next) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user.id });
-    res.status(200).json({ success: true, cart });
-  } catch (err) { next(err); }
+    const cart = await Cart.findOne({ userId: req.user.id })
+      .populate({
+        path: 'items.productId',
+        select: 'name variants',
+        populate: {
+          path: 'variants.colorId',
+          model: 'Color',
+          select: 'name_en' // Now only select 'name_en'
+        }
+      })
+      .exec();
+
+    if (!cart) {
+      return res.status(404).json({ success: false, message: 'Cart not found' });
+    }
+
+    const populatedCart = cart.items.map(item => {
+      const product = item.productId;
+      const variant = product.variants.find(v => v._id.equals(item.variantId));
+
+      return {
+        image: variant.image.url,
+        name: product.name,
+        color: variant.colorId.name_en,
+        quantity: item.quantity,
+        price: variant.price,
+        trial: variant.trial,
+        productId: product._id,
+        variantId: variant._id,
+      };
+    });
+
+    res.status(200).json({ success: true, cart: populatedCart });
+  } catch (err) {
+    console.error(err);
+    next(err);
+  }
 });
 
 // POST /api/v1/mongo/cart/items { productId, variantId, quantity }
