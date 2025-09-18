@@ -56,7 +56,7 @@ export const connectMongo = async () => {
 export const closeMongo = async () => {
   try {
     await mongoose.connection.close();
-    console.log("Mongo connection closed");
+    
   } catch (err) {
     console.error("Error closing Mongo connection:", err?.message || err);
   }
